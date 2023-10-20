@@ -7,11 +7,22 @@ enable_testing()
 
 project(examples)
 
+find_package(PythonLibs 3 REQUIRED)
+
+include_directories(${PYTHON_INCLUDE_DIRS})
+
 get_filename_component(PARENT_DIR ${PROJECT_SOURCE_DIR} DIRECTORY)
 
 include_directories(
+    ${PYTHON_INCLUDE_DIRS}
+    ${PARENT_DIR}/submodule/matplotlib-cpp
     ${PARENT_DIR}/include
     )
+
+add_executable(matplotlib-example matplotlib-example.cpp)
+add_test(NAME matplotlib-example
+         COMMAND matplotlib-example)
+target_link_libraries(matplotlib-example ${PYTHON_LIBRARIES})
 
 add_executable(bigram-array bigram-array.cpp)
 add_test(NAME bigram-array
