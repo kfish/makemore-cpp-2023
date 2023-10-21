@@ -25,6 +25,11 @@ add_test(NAME matplotlib-example
          COMMAND matplotlib-example)
 target_link_libraries(matplotlib-example ${PYTHON_LIBRARIES})
 
+add_executable(matplotlib-eigen-example matplotlib-eigen-example.cpp)
+add_test(NAME matplotlib-eigen-example
+         COMMAND matplotlib-eigen-example)
+target_link_libraries(matplotlib-eigen-example ${PYTHON_LIBRARIES})
+
 add_executable(bigram-array bigram-array.cpp)
 add_test(NAME bigram-array
          COMMAND bigram-array)
