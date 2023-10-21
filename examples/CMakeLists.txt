@@ -15,6 +15,7 @@ get_filename_component(PARENT_DIR ${PROJECT_SOURCE_DIR} DIRECTORY)
 
 include_directories(
     ${PYTHON_INCLUDE_DIRS}
+    ${PARENT_DIR}/submodule/eigen/
     ${PARENT_DIR}/submodule/matplotlib-cpp
     ${PARENT_DIR}/include
     )
@@ -27,3 +28,9 @@ target_link_libraries(matplotlib-example ${PYTHON_LIBRARIES})
 add_executable(bigram-array bigram-array.cpp)
 add_test(NAME bigram-array
          COMMAND bigram-array)
+target_link_libraries(bigram-array ${PYTHON_LIBRARIES})
+
+add_executable(bigram bigram.cpp)
+add_test(NAME bigram
+         COMMAND bigram)
+target_link_libraries(bigram ${PYTHON_LIBRARIES})
