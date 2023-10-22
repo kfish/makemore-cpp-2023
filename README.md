@@ -10,4 +10,6 @@ is included.
 
 ## Bigram Language Model
 
-[lava/matplotlib-cpp](https://github.com/lava/matplotlib-cpp)
+[Cryoris/matplotlib-cpp](https://github.com/Cryoris/matplotlib-cpp)
+
+![Frequency plot](examples/bigram.png)
