@@ -4,6 +4,8 @@
 #include <cctype>
 #include "matplotlibcpp.h"  // Make sure this is the version from the Cryoris fork
 
+#include "matplotlib_main.h"
+
 namespace plt = matplotlibcpp;
 
 int c_to_i(char c) {
@@ -45,7 +47,7 @@ int main(int argc, char *argv[]) {
     Eigen::MatrixXd bigram_freq = generate_bigram_distribution(filename);
 
     // Plotting
-    plt::figure_size(16, 16);
+    plt::figure_size(1024, 1024);
     plt::imshow(bigram_freq, {{"cmap", "Blues"}});
 
     for (int i=0; i<27; ++i) {
@@ -61,7 +63,5 @@ int main(int argc, char *argv[]) {
 
     plt::axis("off");
 
-    plt::show();
-
-    return 0;
+    return matplotlib_main(argc, argv);
 }
