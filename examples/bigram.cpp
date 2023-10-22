@@ -6,6 +6,14 @@
 
 namespace plt = matplotlibcpp;
 
+int c_to_i(char c) {
+    return c - 'a' + 1;
+}
+
+char i_to_c(int i) {
+    return i ? 'a' + i - 1 : '.';
+}
+
 Eigen::MatrixXd generate_bigram_distribution(const std::string& filename) {
     Eigen::MatrixXd bigram_freq = Eigen::MatrixXd::Zero(27, 27);
     std::ifstream file(filename);
@@ -19,7 +27,7 @@ Eigen::MatrixXd generate_bigram_distribution(const std::string& filename) {
         for (char c : word) {
             c = std::tolower(c);
             if (c < 'a' || c > 'z') continue;
-            int curr_index = c - 'a' + 1;
+            int curr_index = c_to_i(c);
             ++bigram_freq(prev_index, curr_index);
             prev_index = curr_index;
         }
@@ -36,15 +44,23 @@ int main(int argc, char *argv[]) {
     // Generate the bigram_freq matrix
     Eigen::MatrixXd bigram_freq = generate_bigram_distribution(filename);
 
-    // Flattening the Eigen::MatrixXd to Eigen::VectorXd using Eigen::Map
-    //Eigen::Map<Eigen::VectorXd> data(bigram_freq.data(), bigram_freq.size());
-
     // Plotting
+    plt::figure_size(16, 16);
     plt::imshow(bigram_freq, {{"cmap", "Blues"}});
-    plt::title("Bigram Frequency Distribution");
-    plt::xlabel("Next Character (Index)");
-    plt::ylabel("Current Character (Index)");
-    plt::colorbar();
+
+    for (int i=0; i<27; ++i) {
+        for (int j=0; j<27; ++j) {
+            char label[3] = {i_to_c(i), i_to_c(j), '\0'};
+            plt::text(j, i, label, {{"ha", "center"}, {"va", "bottom"}, {"color", "grey"}, {"fontsize", "8"}});
+
+            double v = bigram_freq(i, j);
+            std::string value = std::to_string(static_cast<int>(v)); // Convert to int to avoid decimal points
+            plt::text(j, i, value, {{"ha", "center"}, {"va", "top"}, {"color", "grey"}, {"fontsize", "8"}});
+        }
+    }
+
+    plt::axis("off");
+
     plt::show();
 
     return 0;
