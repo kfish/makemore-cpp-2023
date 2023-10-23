@@ -1,7 +1,5 @@
 cmake_minimum_required(VERSION 3.10)
 
-enable_testing()
-
 project(ai-play)
 
 set(CMAKE_CXX_STANDARD 23)
