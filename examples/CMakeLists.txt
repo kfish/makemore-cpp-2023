@@ -1,13 +1,12 @@
 cmake_minimum_required(VERSION 3.10)
 
 set(CMAKE_CXX_STANDARD 23)
-set(CMAKE_CXX_FLAGS_RELEASE "-O3")
+
+add_compile_options(-O3 -Wall -Wextra -Wpedantic)
 
 project(examples)
 
 find_package(PythonLibs 3 REQUIRED)
-
-include_directories(${PYTHON_INCLUDE_DIRS})
 
 get_filename_component(PARENT_DIR ${PROJECT_SOURCE_DIR} DIRECTORY)
 
