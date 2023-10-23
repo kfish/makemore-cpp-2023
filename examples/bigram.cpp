@@ -1,15 +1,21 @@
+#include <cctype>
 #include <iostream>
 #include <fstream>
+#include <random>
+#include <string>
 #include <Eigen/Dense>
-#include <cctype>
+
 #include "matplotlibcpp.h"  // Make sure this is the version from the Cryoris fork
 
 #include "matplotlib_main.h"
+#include "multinomial.h"
+
+#include <iomanip>
 
 namespace plt = matplotlibcpp;
 
 int c_to_i(char c) {
-    return c - 'a' + 1;
+    return (c == '.') ? 0 : c - 'a' + 1;
 }
 
 char i_to_c(int i) {
@@ -40,11 +46,42 @@ Eigen::MatrixXd generate_bigram_distribution(const std::string& filename) {
     return bigram_freq;
 }
 
+Eigen::MatrixXd generate_probability_distributions(const Eigen::MatrixXd& freq_matrix) {
+    Eigen::MatrixXd prob_matrix = freq_matrix; // Copy the matrix; will modify in place
+    Eigen::VectorXd row_sums = freq_matrix.rowwise().sum(); // Sum along each row
+
+    // Normalize each row
+    for (int i = 0; i < freq_matrix.rows(); ++i) {
+        if(row_sums(i) > 0) { // Guard against division by zero
+            prob_matrix.row(i) /= row_sums(i);
+        }
+    }
+
+    return prob_matrix;
+}
+
 int main(int argc, char *argv[]) {
     const std::string filename = argv[1];
 
     // Generate the bigram_freq matrix
     Eigen::MatrixXd bigram_freq = generate_bigram_distribution(filename);
+
+    auto prob_matrix = generate_probability_distributions(bigram_freq);
+
+    auto multinomial = MultinomialSampler(prob_matrix);
+
+    auto generate = [&]() {
+        int ix = 0;
+        do {
+            ix = multinomial(ix);
+            std::cout << i_to_c(ix);
+        } while (ix);
+        std::cout << std::endl;
+    };
+
+    for (int i=0; i<50; ++i) {
+        generate();
+    }
 
     // Plotting
     plt::figure_size(1024, 1024);
@@ -55,8 +92,11 @@ int main(int argc, char *argv[]) {
             char label[3] = {i_to_c(i), i_to_c(j), '\0'};
             plt::text(j, i, label, {{"ha", "center"}, {"va", "bottom"}, {"color", "grey"}, {"fontsize", "8"}});
 
-            double v = bigram_freq(i, j);
-            std::string value = std::to_string(static_cast<int>(v)); // Convert to int to avoid decimal points
+            //double v = bigram_freq(i, j);
+            //std::string value = std::to_string(static_cast<int>(v)); // Convert to int to avoid decimal points
+            double v = prob_matrix(i, j);
+            std::string value = static_cast<std::ostringstream&&>(std::ostringstream() << std::fixed << std::setprecision(2) << v).str();
+
             plt::text(j, i, value, {{"ha", "center"}, {"va", "top"}, {"color", "grey"}, {"fontsize", "8"}});
         }
     }
