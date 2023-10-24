@@ -40,3 +40,8 @@ add_executable(bigram bigram.cpp)
 add_test(NAME bigram
          COMMAND bigram)
 target_link_libraries(bigram ${PYTHON_LIBRARIES})
+
+add_executable(onehot-emma onehot-emma.cpp)
+add_test(NAME onehot-emma
+         COMMAND onehot-emma)
+target_link_libraries(onehot-emma ${PYTHON_LIBRARIES})
