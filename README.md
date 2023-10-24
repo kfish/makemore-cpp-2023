@@ -67,7 +67,7 @@ and visualize this to make it a little more clear:
     plt::imshow(xenc);
 ```
 
-![OneHot Emma](example/onehot-emma.png)
+![OneHot Emma](examples/onehot-emma.png)
 
 ### Loss Plot
 
