@@ -10,7 +10,9 @@ private:
     // Cache discrete_distribution instances for each row of the probability matrix
     void cache_distributions(const Eigen::MatrixXd& prob_matrix) {
         for (int i = 0; i < prob_matrix.rows(); ++i) {
-            std::discrete_distribution<int> dist(prob_matrix.row(i).data(), prob_matrix.row(i).data() + prob_matrix.cols());
+            Eigen::VectorXd row = prob_matrix.row(i); // Force evaluation into a dense vector
+            std::vector<double> prob_vector(row.data(), row.data() + row.size());
+            std::discrete_distribution<int> dist(prob_vector.begin(), prob_vector.end());
             distributions.push_back(dist);
         }
     }
