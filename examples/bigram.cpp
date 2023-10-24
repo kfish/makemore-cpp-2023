@@ -60,6 +60,36 @@ Eigen::MatrixXd generate_probability_distributions(const Eigen::MatrixXd& freq_m
     return prob_matrix;
 }
 
+double evaluate_model(const std::string& filename, const Eigen::MatrixXd& prob_matrix) {
+    double log_likelihood = 0.0;
+    int n = 0;
+
+    std::ifstream file(filename);
+    if (!file) {
+        std::cerr << "Failed to open file." << std::endl;
+        return 0.0;
+    }
+    std::string word;
+    while (file >> word) {
+        int prev_index = 0;
+        for (char c : word) {
+            c = std::tolower(c);
+            if (c < 'a' || c > 'z') continue;
+            int curr_index = c_to_i(c);
+            log_likelihood += log(prob_matrix(prev_index, curr_index));
+            ++n;
+            prev_index = curr_index;
+        }
+        log_likelihood += log(prob_matrix(prev_index, 0));
+        ++n;
+    }
+    double nll = -log_likelihood / (double)n;
+
+    std::cerr << "EVAL: n=" << n << " log_likelihood=" << log_likelihood << " nll=" << nll << std::endl;
+
+    return nll;
+}
+
 int main(int argc, char *argv[]) {
     const std::string filename = argv[1];
 
@@ -82,6 +112,8 @@ int main(int argc, char *argv[]) {
     for (int i=0; i<50; ++i) {
         generate();
     }
+
+    evaluate_model(filename, prob_matrix);
 
     // Plotting
     plt::figure_size(1024, 1024);
