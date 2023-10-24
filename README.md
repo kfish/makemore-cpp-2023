@@ -13,6 +13,7 @@ is included.
    - [Multinomial Sampler](#multinomial-sampler)
    - [Broadcasting Rules](#broadcasting-rules)
 
+   - [OneHot Encoding](#onehot-encoding)
    - [Loss Plot](#loss-plot)
 
 ## Bigram Language Model
@@ -35,6 +36,38 @@ $ sudo apt install python3 python3-dev python3-matplotlib
 ### Broadcasting Rules
 
 [Reductions, visitors and Broadcasting](https://eigen.tuxfamily.org/dox/group__TutorialReductionsVisitorsBroadcasting.html)
+
+### OneHot Encoding
+
+```c++
+static inline Eigen::VectorXd encode_onehot(char c) {
+    return OneHot(27, c_to_i(c));
+}
+
+static inline Eigen::MatrixXd encode_onehot(const std::string& word) {
+    Eigen::MatrixXd matrix(word.size(), 27);
+
+    for (size_t i = 0; i < word.size(); ++i) {
+        matrix.row(i) = encode_onehot(tolower(word[i]));
+    }
+
+    return matrix;
+}
+
+```
+
+We can encode the input string `".emma"` (including start token `'.'`)
+and visualize this to make it a little more clear:
+
+```c++
+    std::string xs = ".emma";
+
+    auto xenc = encode_onehot(xs);
+
+    plt::imshow(xenc);
+```
+
+![OneHot Emma](example/onehot-emma.png)
 
 ### Loss Plot
 
