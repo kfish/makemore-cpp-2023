@@ -30,6 +30,7 @@ int main(int argc, char *argv[]) {
 
     auto xenc = encode_onehot(xs);
 
+    plt::figure_size(640, 180);
     plt::imshow(xenc);
 
     return matplotlib_main(argc, argv);
