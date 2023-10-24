@@ -15,9 +15,16 @@ is included.
 
 [Cryoris/matplotlib-cpp](https://github.com/Cryoris/matplotlib-cpp)
 
+```bash
+$ sudo apt update
+$ sudo apt install python3 python3-dev python3-matplotlib
+```
+
 ### Bigram Frequencies
 
 ![Frequency plot](examples/bigram.png)
+
+### Multinomial Sampler
 
 ### Loss Plot
 
