@@ -7,6 +7,12 @@ Each step of the second episode of *Neural Nets: Zero to Hero*:
 https://youtu.be/PaCmpygFfXo)
 is included.
 
+ * Bigram Language Model
+   - [matplotlib-cpp](#matplotlib-cpp)
+   - [Bigram Frequencies](#bigram-frequencies)
+   - [Multinomial Sampler](#multinomial-sampler)
+   - [Broadcasting Rules](#broadcasting-rules)
+
    - [Loss Plot](#loss-plot)
 
 ## Bigram Language Model
@@ -25,6 +31,10 @@ $ sudo apt install python3 python3-dev python3-matplotlib
 ![Frequency plot](examples/bigram.png)
 
 ### Multinomial Sampler
+
+### Broadcasting Rules
+
+[Reductions, visitors and Broadcasting](https://eigen.tuxfamily.org/dox/group__TutorialReductionsVisitorsBroadcasting.html)
 
 ### Loss Plot
 
