@@ -237,6 +237,19 @@ class RawValue {
             return out;
         }
 
+        // log
+        friend ptr log(const ptr& a) {
+            std::set<ptr> children = {a};
+            double t = log(a->data());
+            auto out = make(t, children, "log");
+
+            out->backward_ = [=]() {
+                a->grad_ += out->grad_ / a->data_;
+            };
+
+            return out;
+        }
+
         // exp
         friend ptr exp(const ptr& a) {
             std::set<ptr> children = {a};
