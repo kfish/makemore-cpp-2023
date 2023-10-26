@@ -67,6 +67,34 @@ class RawValue {
             }
         }
 
+        friend void forward(const ptr& node) {
+            std::vector<RawValue<T>*> topo;
+            std::set<RawValue<T>*> visited;
+
+            std::function<void(const ptr&)> build_topo = [&](const ptr& v) {
+                if (!visited.contains(v.get())) {
+                    visited.insert(v.get());
+                    for (auto && c : v->children()) {
+                        build_topo(c);
+                    }
+                    topo.push_back(v.get());
+                }
+            };
+
+            build_topo(node);
+
+            int n=0;
+
+            for (auto it = topo.begin(); it != topo.end(); ++it) {
+                const RawValue<T>* v = *it;
+                auto f = v->forward_;
+                if (f) {
+                    ++n;
+                    f();
+                }
+            }
+        }
+
         friend void backward(const ptr& node) {
             std::vector<RawValue<T>*> topo;
             std::set<RawValue<T>*> visited;
@@ -101,6 +129,10 @@ class RawValue {
             std::set<ptr> children = {a, b};
 
             auto out = make(a->data() + b->data(), children, "+");
+
+            out->forward_ = [=]() {
+                out->data_ = a->data() + b->data();
+            };
 
             out->backward_ = [=]() {
                 a->grad_ += out->grad_;
@@ -144,6 +176,10 @@ class RawValue {
             a->label_ = "";
             a->prev_ = {old, b};
 
+            a->forward_ = [=]() {
+                a->data_ = old->data() + b->data();
+            };
+
             a->backward_ = [=]() {
                 old->grad_ += a->grad_;
                 b->grad_ += a->grad_;
@@ -160,6 +196,10 @@ class RawValue {
             std::set<ptr> children = {a};
             auto out = make(-a->data(), children, "neg");
 
+            out->forward_ = [=]() {
+                out->data_ = -a->data();
+            };
+
             out->backward_ = [=]() {
                 a->grad_ -= out->grad_;
             };
@@ -171,6 +211,10 @@ class RawValue {
         friend ptr operator-(const ptr& a, const ptr& b) {
             std::set<ptr> children = {a, b};
             auto out = make(a->data() - b->data(), children, "-");
+
+            out->forward_ = [=]() {
+                out->data_ = a->data() - b->data();
+            };
 
             out->backward_ = [=]() {
                 a->grad_ += out->grad_;
@@ -191,6 +235,10 @@ class RawValue {
             std::set<ptr> children = {a, b};
             auto out = make(a->data() * b->data(), children, "*");
 
+            out->forward_ = [=]() {
+                out->data_ = a->data() * b->data();
+            };
+
             out->backward_ = [=]() {
                 a->grad_ += b->data() * out->grad();
                 b->grad_ += a->data() * out->grad();
@@ -209,6 +257,10 @@ class RawValue {
         friend ptr operator/(const ptr& a, const ptr& b) {
             std::set<ptr> children = {a, b};
             auto out = make(a->data() / b->data(), children, "/");
+
+            out->forward_ = [=]() {
+                out->data_ = a->data() / b->data();
+            };
 
             out->backward_ = [=]() {
                 a->grad_ += (1.0/b->data()) * out->grad();
@@ -230,6 +282,10 @@ class RawValue {
             double t = pow(a->data(), -1.0);
             auto out = make(t, children, "recip");
 
+            out->forward_ = [=]() {
+                out->data_ = pow(a->data(), -1.0);
+            };
+
             out->backward_ = [=]() {
                 a->grad_ += (-1.0 * pow(a->data(), -2.0)) * out->grad();
             };
@@ -242,6 +298,10 @@ class RawValue {
             std::set<ptr> children = {a};
             double t = log(a->data());
             auto out = make(t, children, "log");
+
+            out->forward_ = [=]() {
+                out->data_ = log(a->data());
+            };
 
             out->backward_ = [=]() {
                 a->grad_ += out->grad_ / a->data_;
@@ -256,6 +316,10 @@ class RawValue {
             double t = exp(a->data());
             auto out = make(t, children, "exp");
 
+            out->forward_ = [=]() {
+                out->data_ = exp(a->data());
+            };
+
             out->backward_ = [=]() {
                 a->grad_ += out->data_ * out->grad_;
             };
@@ -268,6 +332,10 @@ class RawValue {
             std::set<ptr> children = {a, b};
             double t = pow(a->data(), b->data());
             auto out = make(t, children, "pow");
+
+            out->forward_ = [=]() {
+                out->data_ = pow(a->data(), b->data());
+            };
 
             out->backward_ = [=]() {
                 a->grad_ += (b->data() * pow(a->data(), (b->data()-1))) * out->grad();
@@ -290,7 +358,17 @@ class RawValue {
             double t = (e2x-1)/(e2x+1);
             auto out = make(t, children, "tanh");
 
+            out->forward_ = [=]() {
+                double x = a->data();
+                double e2x = exp(2.0*x);
+                double t = (e2x-1)/(e2x+1);
+                out->data_ = t;
+            };
+
             out->backward_ = [=]() {
+                double x = a->data();
+                double e2x = exp(2.0*x);
+                double t = (e2x-1)/(e2x+1);
                 a->grad_ += (1.0 - t*t) * out->grad_;
             };
 
@@ -303,6 +381,10 @@ class RawValue {
             T x = a->data();
             T v = (x < 0) ? 0 : x;
             auto out = make(v, children, "relu");
+
+            out->forward_ = [=]() {
+                out->data_ = (a->data() < 0) ? 0 : a->data();
+            };
 
             out->backward_ = [=]() {
                 T t = out->data_;
@@ -320,6 +402,7 @@ class RawValue {
         std::set<ptr> prev_{};
         std::string op_{""};
 
+        std::function<void()> forward_{};
         std::function<void()> backward_{};
 };
 
