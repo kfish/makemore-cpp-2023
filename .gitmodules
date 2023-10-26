@@ -1,6 +1,6 @@
 [submodule "submodule/matplotlib-cpp"]
 	path = submodule/matplotlib-cpp
-	url = https://github.com/Cryoris/matplotlib-cpp.git
+	url = https://github.com/kfish/matplotlib-cpp.git
 [submodule "submodule/eigen"]
 	path = submodule/eigen
 	url = https://gitlab.com/libeigen/eigen.git
