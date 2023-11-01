@@ -9,13 +9,18 @@
 
 namespace ai {
 
+static inline std::mt19937 static_mt19937() {
+    static unsigned int seed = 42;
+    static thread_local std::mt19937 gen(seed++);
+    seed = gen(); // update seed for next time
+    return gen;
+}
+
 // Static inline function to generate a random T
 template <typename T>
 static inline Value<T> randomValue() {
-    static unsigned int seed = 42;
-    static thread_local std::mt19937 gen(seed++);
+    std::mt19937& gen = static_mt19937();
     std::uniform_real_distribution<T> dist(-1.0, 1.0);
-    seed = gen(); // update seed for next time
     return make_value(dist(gen));
 }
 

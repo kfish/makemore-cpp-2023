@@ -2,6 +2,10 @@
 #include <Eigen/Dense>
 #include <vector>
 
+#include "randomdata.h"
+
+namespace ai {
+
 class MultinomialSampler {
 private:
     std::vector<std::discrete_distribution<int>> distributions; // Cached distributions
@@ -19,7 +23,10 @@ private:
 
 public:
     // Constructor that takes a precalculated probability matrix
-    MultinomialSampler(const Eigen::MatrixXd& prob_matrix) : rng(std::random_device{}()) {
+    MultinomialSampler(const Eigen::MatrixXd& prob_matrix)
+        //: rng(std::random_device{}())
+        : rng(static_mt19937())
+    {
         cache_distributions(prob_matrix);
     }
 
@@ -33,3 +40,5 @@ public:
         return distributions[row_idx](rng);
     }
 };
+
+} // namespace ai
