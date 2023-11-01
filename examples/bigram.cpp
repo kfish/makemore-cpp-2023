@@ -12,6 +12,8 @@
 
 #include <iomanip>
 
+using namespace ai;
+
 namespace plt = matplotlibcpp;
 
 int c_to_i(char c) {
