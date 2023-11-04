@@ -7,6 +7,8 @@
 #include <execution>
 #include <type_traits>
 
+namespace ai {
+
 template <template <typename, typename...> class C, typename T, typename... Args>
 //requires requires (C<T, Args...> c) { c.begin(); c.end(); }
 T mac(const C<T, Args...>& a, const C<T, Args...>& b, T init = T{}) {
@@ -39,3 +41,5 @@ T mac(const std::array<T, N>& a, const std::array<T, N>& b, T init = T{}) {
         std::multiplies<>() // Multiply
     );
 }
+
+} // namespace ai
