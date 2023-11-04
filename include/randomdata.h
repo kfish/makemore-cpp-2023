@@ -19,7 +19,7 @@ static inline std::mt19937 static_mt19937() {
 // Static inline function to generate a random T
 template <typename T>
 static inline Value<T> randomValue() {
-    std::mt19937& gen = static_mt19937();
+    std::mt19937 gen = static_mt19937();
     std::uniform_real_distribution<T> dist(-1.0, 1.0);
     return make_value(dist(gen));
 }
