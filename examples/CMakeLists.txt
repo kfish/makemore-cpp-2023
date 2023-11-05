@@ -49,3 +49,9 @@ target_link_libraries(onehot-emma ${PYTHON_LIBRARIES})
 add_executable(regression0 regression0.cpp)
 add_test(NAME regression0
          COMMAND regression0)
+
+add_executable(logit-backprop logit-backprop.cpp)
+add_test(NAME logit-backprop
+         COMMAND logit-backprop)
+target_link_libraries(logit-backprop ${PYTHON_LIBRARIES})
+
