@@ -45,3 +45,7 @@ add_executable(onehot-emma onehot-emma.cpp)
 add_test(NAME onehot-emma
          COMMAND onehot-emma)
 target_link_libraries(onehot-emma ${PYTHON_LIBRARIES})
+
+add_executable(regression0 regression0.cpp)
+add_test(NAME regression0
+         COMMAND regression0)

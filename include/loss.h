@@ -87,6 +87,10 @@ class MSELoss {
             return mse_loss(predictions_, ground_truth);
         }
 
+        const std::array<Value<T>, N>& predictions() const {
+            return predictions_;
+        }
+
     private:
         const std::function<Value<T>(const Arg&)> func_;
         std::array<Value<T>, N> predictions_;
