@@ -7,14 +7,17 @@ Each step of the second episode of *Neural Nets: Zero to Hero*:
 https://youtu.be/PaCmpygFfXo)
 is included.
 
- * Bigram Language Model
+ * [Bigram Language Model](#bigram-language-model)
    - [matplotlib-cpp](#matplotlib-cpp)
    - [Bigram Frequencies](#bigram-frequencies)
    - [Multinomial Sampler](#multinomial-sampler)
    - [Broadcasting Rules](#broadcasting-rules)
 
+ * [The Neural Network Approach](#the-neural-network-approach)
    - [OneHot Encoding](#onehot-encoding)
-   - [Loss Plot](#loss-plot)
+   - [LogitLayer](#logitlayer)
+   - [Smoothing](#smoothing)
+   - [Sampling](#sampling)
 
 ## Bigram Language Model
 
@@ -36,6 +39,8 @@ $ sudo apt install python3 python3-dev python3-matplotlib
 ### Broadcasting Rules
 
 [Reductions, visitors and Broadcasting](https://eigen.tuxfamily.org/dox/group__TutorialReductionsVisitorsBroadcasting.html)
+
+## The Neural Network Approach
 
 ### OneHot Encoding
 
@@ -69,25 +74,14 @@ and visualize this to make it a little more clear:
 
 ![OneHot Emma](examples/onehot-emma.png)
 
-### Loss Plot
+### LogitLayer
 
-We can plot the loss values over iterations using [loss_plot.gp](loss_plot.gp):
+### Smoothing
 
-```gnuplot
-set logscale y
-set xlabel "Iterations"
-set ylabel "Loss"
-set terminal svg
-set output "loss.svg"
-set object 1 rect from screen 0,0 to screen 1,1 behind fillcolor rgb "white" fillstyle solid 1.0
-plot "loss.tsv" using 1:2 with lines title "Loss vs Iteration"
-```
+Incentivize W to be near zero
 
-```bash
-$ gnuplot loss_plot.gp
-```
+square and sum all entries: zero loss if W near zero
 
-![loss.svg](examples/loss.svg)
+### Sampling
 
-This shows the loss reduction during training.
-
+Extract probability matrix, use multinomial sampler
