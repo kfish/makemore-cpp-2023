@@ -32,10 +32,11 @@ class BackPropImpl {
                 T learning_rate, int iterations, bool verbose=false)
         {
             auto loss_f = loss_function();
-            T result;
+            T result{};
+
+            Value<T> loss = loss_f(input, ground_truth, verbose);
 
             for (int i=0; i < iterations; ++i) {
-                Value<T> loss = loss_f(input, ground_truth, verbose);
 
                 result = loss->data();
                 loss_output_ << iter_ << '\t' << result << '\n';
@@ -47,6 +48,17 @@ class BackPropImpl {
                 backward(loss);
 
                 func_.adjust(learning_rate);
+
+                forward(loss);
+
+                if (verbose) {
+                    auto & predictions = loss_f.predictions();
+                    std::cerr << "Predictions: ";
+                    for (size_t i = 0; i < N; ++i) {
+                        std::cerr << predictions[i]->data() << " ";
+                    }
+                    std::cerr << '\n';
+                }
 
                 ++iter_;
             }

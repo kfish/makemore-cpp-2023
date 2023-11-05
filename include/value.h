@@ -111,6 +111,7 @@ class RawValue {
 
             build_topo(node);
 
+            // Zero gradients first
             for (auto & v : topo) {
                 v->grad_ = 0.0;
             }
