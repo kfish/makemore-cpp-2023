@@ -7,13 +7,17 @@ Each step of the second episode of *Neural Nets: Zero to Hero*:
 https://youtu.be/PaCmpygFfXo)
 is included.
 
- * Bigram Language Model
+ * [Bigram Language Model](#bigram-language-model)
    - [matplotlib-cpp](#matplotlib-cpp)
    - [Bigram Frequencies](#bigram-frequencies)
    - [Multinomial Sampler](#multinomial-sampler)
    - [Broadcasting Rules](#broadcasting-rules)
 
+ * [The Neural Network Approach](#the-neural-network-approach)
    - [OneHot Encoding](#onehot-encoding)
+   - [LogitLayer](#logitlayer)
+   - [Smoothing](#smoothing)
+   - [Sampling](#sampling)
 
 ## Bigram Language Model
 
@@ -35,6 +39,8 @@ $ sudo apt install python3 python3-dev python3-matplotlib
 ### Broadcasting Rules
 
 [Reductions, visitors and Broadcasting](https://eigen.tuxfamily.org/dox/group__TutorialReductionsVisitorsBroadcasting.html)
+
+## The Neural Network Approach
 
 ### OneHot Encoding
 
@@ -67,3 +73,15 @@ and visualize this to make it a little more clear:
 ```
 
 ![OneHot Emma](examples/onehot-emma.png)
+
+### LogitLayer
+
+### Smoothing
+
+Incentivize W to be near zero
+
+square and sum all entries: zero loss if W near zero
+
+### Sampling
+
+Extract probability matrix, use multinomial sampler
