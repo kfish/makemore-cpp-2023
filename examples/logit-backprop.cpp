@@ -159,6 +159,13 @@ void extract_probability_matrix(const LogitLayer<double, 27, 27>& layer) {
 }
 
 int main(int argc, char *argv[]) {
+    if (argc == 0) {
+        std::cout << "Usage: " << argv[0] << " FILE" << std::endl;
+        std::cout << std::endl;
+        std::cout << "  FILE: line delimited list of words" << std::endl;
+        exit(1);
+    }
+
     const std::string filename = argv[1];
 
     cache_onehots();
