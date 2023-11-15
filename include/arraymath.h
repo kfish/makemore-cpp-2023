@@ -6,6 +6,16 @@
 
 namespace ai {
 
+// Static inline function to generate a random std::array<T, N>
+template <typename T, size_t N>
+static inline std::array<Value<T>, N> zeroArray() {
+    std::array<Value<T>, N> arr;
+    for (auto& element : arr) {
+        element = make_value(0.0);
+    }
+    return arr;
+}
+
 template <typename T, std::size_t N>
 T sum(const std::array<T, N>& arr) {
     static_assert(N > 0, "Array cannot be empty");
