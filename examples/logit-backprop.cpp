@@ -27,7 +27,7 @@ std::string string_pair(int row, int col) {
 template <typename T>
 static inline std::array<Value<T>, 27> encode_onehot(size_t i) {
     std::array<T, 27> arr{};
-    arr[i] = 0.7;
+    arr[i] = 1.0;
     return value_array(arr);
 }
 
