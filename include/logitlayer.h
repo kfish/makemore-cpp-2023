@@ -17,7 +17,8 @@ template <typename T, size_t Nin>
 class LogitNeuron {
     public:
         LogitNeuron()
-            : weights_(randomArray<T, Nin>())
+            //: weights_(randomArray<T, Nin>())
+            : weights_(zeroArray<T, Nin>())
         {
         }
 
@@ -65,7 +66,7 @@ class LogitLayer {
         }
 
         const Value<T>& weight(int row, int col) const {
-            return neurons_[row].weights()[col];
+            return neurons_[col].weights()[row];
         }
 
         void adjust(const T& learning_rate) {
