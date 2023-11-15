@@ -55,3 +55,7 @@ add_test(NAME logit-backprop
          COMMAND logit-backprop)
 target_link_libraries(logit-backprop ${PYTHON_LIBRARIES})
 
+add_executable(logit-node-backprop logit-node-backprop.cpp)
+add_test(NAME logit-node-backprop
+         COMMAND logit-node-backprop)
+target_link_libraries(logit-node-backprop ${PYTHON_LIBRARIES})
