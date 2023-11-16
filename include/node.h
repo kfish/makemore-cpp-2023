@@ -8,8 +8,6 @@
 
 #include "pretty.h"
 
-//#define DEBUG
-
 namespace ai {
 
 template<typename Derived>
@@ -225,14 +223,6 @@ class NodeValue {
             };
 
             out->backward_ = [=]() {
-#ifdef DEBUG
-                std::cerr << basename(__FILE__) << ":" << __LINE__ << ": "
-                    << "BACKWARD operator+:"
-                    << "\n\tout->grad(): " << out->grad()
-                    << "\n\ta->grad(): " << a->grad()
-                    << "\n\tb->grad(): " << b->grad()
-                    << std::endl;
-#endif
                 a->grad() += out->grad();
                 b->grad() += out->grad();
             };
@@ -265,11 +255,6 @@ class NodeValue {
 
             out->backward_ = [=]() {
                 a->grad() -= out->grad();
-#ifdef DEBUG
-                std::cerr << basename(__FILE__) << ":" << __LINE__ << ": "
-                    << "BACKWARD operator- (unary):"
-                    << std::endl;
-#endif
             };
 
             out->forward_();
@@ -320,11 +305,6 @@ class NodeValue {
             out->backward_ = [=]() {
                 // Gradient with respect to weights is the upstream gradient times the input transposed
                 a->grad() += out->grad() * m;
-#ifdef DEBUG
-                std::cerr << basename(__FILE__) << ":" << __LINE__ << ": "
-                    << "BACKWARD OPERATOR* (scalar)"
-                    << std::endl;
-#endif
             };
 
             out->forward_();
@@ -344,38 +324,14 @@ class NodeValue {
 
             out->forward_ = [=]() {
                 out->data() = a->data() * b->data();
-                //std::cerr << "forward*: a=" << PrettyMatrix(a->data()) << " * b=" << PrettyMatrix(b->data()) << std::endl;
-                //std::cerr << "\tout=" << PrettyMatrix(out->data()) << std::endl;
             };
 
             out->backward_ = [=]() {
-#ifdef DEBUG
-                std::cerr << basename(__FILE__) << ":" << __LINE__ << ": "
-                    << "BACKWARD OPERATOR*: "
-                    << "out->op: " << out->op() << "\t"
-                    << "out->grad():(" << out->grad().rows() << ", " << out->grad().cols() << ")\t"
-                    << "a->op: " << a->op() << "\t"
-                    //<< "a->data():(" << a->data().rows() << ", " << a->data().cols() << ")\t"
-                    << "a->data(): " << a->data() << "\n\t"
-                    << "a->grad():(" << a->grad().rows() << ", " << a->grad().cols() << ")\t"
-                    << "b->op: " << b->op() << "\t"
-                    //<< "b->data():(" << b->data().rows() << ", " << b->data().cols() << ")\t"
-                    << "b->data(): " << b->data() << "\n\t"
-                    //<< "b->grad():(" << b->grad().rows() << ", " << b->grad().cols() << ")\t"
-                    ;
-#endif
-
                 // Gradient with respect to weights is the upstream gradient times the input transposed
                 a->grad() += out->grad() * b->data().transpose();
 
                 // Gradient with respect to input is the transposed weights times the upstream gradient
                 b->grad() += a->data().transpose() * out->grad();
-#ifdef DEBUG
-                std::cerr
-                    << "a->grad(): " << a->grad() << "\n\t"
-                    << "b->grad(): " << b->grad() << "\n"
-                    << "<BACKWARD OP* DONE>" << std::endl;
-#endif
             };
 
             out->forward_();
@@ -400,15 +356,6 @@ class NodeValue {
 
             out->backward_ = [=]() {
                 a->grad() += out->grad() * (1.0 / m);
-#ifdef DEBUG
-                std::cerr << basename(__FILE__) << ":" << __LINE__ << ": "
-                    << "BACKWARD operator/ (by scalar m, a->grad() = out->grad() / m):"
-                    << "\n\tm: " << m
-                    << "\n\tout->grad(): " << out->grad()
-                    << "\n\ta->grad(): " << a->grad()
-                    << std::endl;
-#endif
-
             };
 
             out->forward_();
@@ -433,11 +380,6 @@ class NodeValue {
             out->backward_ = [=]() {
                 a->grad() += out->grad()(0, 0) * b->data();
                 b->grad() += out->grad()(0, 0) * a->data();
-#ifdef DEBUG
-                std::cerr << basename(__FILE__) << ":" << __LINE__ << ": "
-                    << "DOT"
-                    << std::endl;
-#endif
             };
 
             out->forward_();
@@ -456,16 +398,7 @@ class NodeValue {
             };
 
             out->backward_ = [=]() {
-#ifdef DEBUG
-                std::cerr << basename(__FILE__) << ":" << __LINE__ << ": "
-                    << "TRANSPOSE: ";
-#endif
-                a->grad() += out->grad().transpose();
-#ifdef DEBUG
-                std::cerr
-                    << a->grad()
-                    << std::endl;
-#endif
+               a->grad() += out->grad().transpose();
             };
 
             out->forward_();
@@ -483,16 +416,7 @@ class NodeValue {
             };
 
             out->backward_ = [=]() {
-#ifdef DEBUG
-                std::cerr << basename(__FILE__) << ":" << __LINE__ << ": "
-                    << "ROW: ";
-#endif
                 a->grad().row(ix) += out->grad();
-#ifdef DEBUG
-                std::cerr
-                    << a->grad()
-                    << std::endl;
-#endif
             };
 
             out->forward_();
@@ -511,16 +435,7 @@ class NodeValue {
             };
 
             out->backward_ = [=]() {
-#ifdef DEBUG
-                std::cerr << basename(__FILE__) << ":" << __LINE__ << ": "
-                    << "COL: ";
-#endif
                 a->grad().col(ix) += out->grad();
-#ifdef DEBUG
-                std::cerr
-                    << a->grad()
-                    << std::endl;
-#endif
             };
 
             out->forward_();
@@ -535,11 +450,6 @@ class NodeValue {
             out->op_ = "normalize_rows";
 
             out->forward_ = [=]() {
-#if 0
-                Eigen::RowVectorXd rowSums = a->data().rowwise().sum();
-                Eigen::MatrixXd replicated_row_sums = rowSums.replicate(1, a->data().cols());
-                out->data() = a->data().array() / replicated_row_sums.array();
-#else
                 // Calculate the sum of each row
                 Eigen::VectorXd rowSums = a->data().rowwise().sum();
 
@@ -549,14 +459,9 @@ class NodeValue {
                         out->data().row(i) = a->data().row(i).array() / rowSums(i);
                     }
                 }
-#endif
             };
 
             out->backward_ = [=]() {
-#ifdef DEBUG
-                std::cerr << basename(__FILE__) << ":" << __LINE__ << ": "
-                    << "NORMALIZE_ROWS: ";
-#endif
                 int rows = a->data().rows();
                 int cols = a->data().cols();
 
@@ -576,74 +481,9 @@ class NodeValue {
                         a->grad()(i, j) += grad;
                     }
                 }
-
-#ifdef DEBUG
-                std::cerr
-                    << "DONE: "
-                    << a->grad()
-                    << std::endl;
-#endif
             };
 
             out->forward_();
-            return out;
-        }
-
-        friend ptr normalize_cols(const ptr& a) {
-            auto out = make_empty_copy(a);
-
-            out->prev_ = {a};
-            out->op_ = "normalize_cols";
-
-            out->forward_ = [=]() {
-                Eigen::VectorXd colSums = a->data().colwise().sum();
-
-                // Create a diagonal matrix from colSums for broadcasting
-                Eigen::MatrixXd colSumsDiag = colSums.asDiagonal();
-
-                // Use matrix multiplication for normalization
-                out->data() = a->data() * colSumsDiag.inverse();
-
-                //std::cerr << "norm: a=" << PrettyMatrix(a->data()) << std::endl;
-                //std::cerr << "norm: out=" << PrettyMatrix(out->data()) << std::endl;
-            };
-
-            out->backward_ = [=]() {
-#ifdef DEBUG
-                std::cerr << basename(__FILE__) << ":" << __LINE__ << ": "
-                    << "NORMALIZE_COLS: ";
-#endif
-
-                Eigen::VectorXd colSums = a->data().colwise().sum();
-
-                for (int i = 0; i < a->data().cols(); ++i) {
-                    // Extract the i-th column of the gradient of the result
-                    Eigen::VectorXd grad_col = out->grad().col(i);
-                    Eigen::VectorXd input_col = a->data().col(i);
-
-                    // Compute the gradient effect for each element
-                    for (int j = 0; j < a->data().rows(); ++j) {
-                        // Compute the derivative of the normalization operation
-                        double grad_effect = 0.0;
-                        for (int k = 0; k < a->data().rows(); ++k) {
-                            if (j == k) {
-                                grad_effect += grad_col(k) * (colSums(i) - input_col(k)) / (colSums(i) * colSums(i));
-                            } else {
-                                grad_effect -= grad_col(k) * input_col(j) / (colSums(i) * colSums(i));
-                            }
-                        }
-                        a->grad()(j, i) += grad_effect;
-                    }
-                }
-#ifdef DEBUG
-                std::cerr
-                    << a->grad()
-                    << std::endl;
-#endif
-            };
-
-            out->forward_();
-
             return out;
         }
 
@@ -691,7 +531,6 @@ class NodeValue {
             return out;
         }
 
-#if 0
         // pow
         friend ptr pow(const ptr& a, double exp_value) {
             auto out = make_empty_copy(a);
@@ -756,7 +595,6 @@ class NodeValue {
             out->forward_();
             return out;
         }
-#endif
 
     private:
         std::string label_{};
@@ -769,17 +607,10 @@ class NodeValue {
 
 using Node = typename NodeValue::ptr;
 
-#if 0
-template <typename T, typename... Args>
-static Node make_node(const T& data, Args&&... args) {
-    return NodeValue::make(data, std::forward<Args>(args)...);
-}
-#else
 template <typename... Args>
 static Node make_node(Args&&... args) {
     return NodeValue::make(std::forward<Args>(args)...);
 }
-#endif
 
 static inline Node label(Node unlabelled, const std::string& label) {
     return NodeValue::add_label(unlabelled, label);
