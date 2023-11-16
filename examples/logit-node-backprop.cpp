@@ -4,7 +4,6 @@
 #include <fstream>
 
 #include "multinomial.h"
-//#include "logitlayer.h"
 #include "logitnode.h"
 #include "onehot.h"
 #include "graph.h"
@@ -203,54 +202,26 @@ int main(int argc, char *argv[]) {
     return 0;
 #endif
 
-#if 1
     for (int iter=0; iter<300; ++iter) {
         //auto nll = make_nll(layer, filename, 500000);
         backward(nll);
 
-        std::cerr << "Backward Iter " << iter << ": " << nll << std::endl;
+        std::cerr << "Iter " << iter << ": " << nll << std::endl;
 
-#if 1
-        std::cerr << "\tem: "
-            << "data=" << layer.weights()->data()(c_to_i('e'), c_to_i('m'))
-            << ", grad=" << layer.weights()->grad()(c_to_i('e'), c_to_i('m'))
-            << std::endl;
-
-        std::cerr << "\tme: "
-            << "data=" << layer.weights()->data()(c_to_i('m'), c_to_i('e'))
-            << ", grad=" << layer.weights()->grad()(c_to_i('m'), c_to_i('e'))
-            << std::endl;
-#endif
-
-        std::cerr << "WGrad: " << PrettyMatrix(layer.weights()->grad()) << std::endl;
+        //std::cerr << "WGrad: " << PrettyMatrix(layer.weights()->grad()) << std::endl;
 
         layer.adjust(50.0);
 
         //std::cerr << "Weights: " << PrettyMatrix(layer.weights()->data()) << std::endl;
 
-        //
         forward(nll);
-        std::cerr << "Forward Iter " << iter << ": " << nll << std::endl;
+
         //recalc_log_likelihoods(layer);
-
-        //std::cerr << "POST Iter " << iter << ": " << nll << std::endl;
-        //std::cerr << "\tem: " << layer.weight(c_to_i('e'), c_to_i('m')) << std::endl;
-
-        //auto prob_matrix = extract_probability_matrix(layer);
-        //extract_probability_matrix(layer);
-        //std::cerr << prob_matrix << std::endl;
-
     }
-
-#endif
-
-    //return 0;
 
     //auto prob_matrix = extract_probability_matrix(layer);
     extract_probability_matrix(layer);
     auto multinomial = MultinomialSampler(prob_matrix);
-
-    //return 0;
 
     auto generate = [&]() {
         int ix = 0;
