@@ -4,6 +4,9 @@
 #include <cmath>
 #include <Eigen/Dense>
 #include <memory>
+#include <unordered_map>
+#include <vector>
+#include <stack>
 #include <set>
 
 #include "pretty.h"
@@ -130,7 +133,7 @@ class NodeValue {
             return label_;
         }
 
-        const std::set<ptr>& children() const {
+        const std::vector<ptr>& children() const {
             return prev_;
         }
 
@@ -154,50 +157,60 @@ class NodeValue {
             base_.initgrad();
         }
 
-        friend void forward(const ptr& node) {
+        friend std::vector<NodeValue*> topo_sort(const ptr& node) {
             std::vector<NodeValue*> topo;
-            std::set<NodeValue*> visited;
+            std::unordered_map<NodeValue*, bool> visited;
+            std::stack<NodeValue*> stack;
 
-            std::function<void(const ptr&)> build_topo = [&](const ptr& v) {
-                if (!visited.contains(v.get())) {
-                    visited.insert(v.get());
-                    for (auto && c : v->children()) {
-                        build_topo(c);
-                    }
-                    topo.push_back(v.get());
+            // Start by pushing the root node onto the stack
+            stack.push(node.get());
+
+            while (!stack.empty()) {
+                NodeValue* v = stack.top();
+                stack.pop();
+
+                if (visited[v]) {
+                    // Node already visited, skip
+                    continue;
                 }
-            };
 
-            build_topo(node);
+                // Mark the node as visited
+                visited[v] = true;
 
-            int n=0;
+                // Push the node into the topological order
+                topo.push_back(v);
 
+                // Iterate over the children in reverse order to maintain the correct ordering
+                // when they are popped from the stack, because the stack is LIFO.
+                const auto& childrenNodes = v->children();
+                for (auto it = childrenNodes.rbegin(); it != childrenNodes.rend(); ++it) {
+                    if (!visited[it->get()]) {
+                        stack.push(it->get());
+                    }
+                }
+            }
+
+            // The topo vector will be in reverse order, so reverse it before returning
+            std::reverse(topo.begin(), topo.end());
+
+            return topo;
+        }
+
+        friend void forward_presorted(const std::vector<NodeValue*>& topo) {
             for (auto it = topo.begin(); it != topo.end(); ++it) {
                 const NodeValue* v = *it;
                 auto f = v->forward_;
-                if (f) {
-                    ++n;
-                    f();
-                }
+                if (f) f();
             }
         }
 
-        friend void backward(const ptr& node) {
-            std::vector<NodeValue*> topo;
-            std::set<NodeValue*> visited;
+        friend void forward(const ptr& node) {
+            std::vector<NodeValue*> topo = topo_sort(node);
 
-            std::function<void(const ptr&)> build_topo = [&](const ptr& v) {
-                if (!visited.contains(v.get())) {
-                    visited.insert(v.get());
-                    for (auto && c : v->children()) {
-                        build_topo(c);
-                    }
-                    topo.push_back(v.get());
-                }
-            };
+            forward_presorted(topo);
+        }
 
-            build_topo(node);
-
+        friend void backward_presorted(const ptr& node, const std::vector<NodeValue*>& topo) {
             // Zero gradients first
             for (auto & v : topo) {
                 v->zerograd();
@@ -210,6 +223,12 @@ class NodeValue {
                 auto f = v->backward_;
                 if (f) f();
             }
+        }
+
+        friend void backward(const ptr& node) {
+            std::vector<NodeValue*> topo = topo_sort(node);
+
+            backward_presorted(node, topo);
         }
 
         // operator+
@@ -598,7 +617,7 @@ class NodeValue {
 
     private:
         std::string label_{};
-        std::set<ptr> prev_{};
+        std::vector<ptr> prev_{};
         std::string op_{""};
 
         std::function<void()> forward_{};
