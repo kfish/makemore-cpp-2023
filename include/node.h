@@ -550,6 +550,26 @@ class NodeValue {
             return out;
         }
 
+        friend ptr tanh(const ptr& a) {
+            auto out = make_empty_copy(a);
+
+            out->prev_ = {a};
+            out->op_ = "tanh";
+
+            out->forward_ = [out, a]() {
+                out->data() = a->data().array().tanh();
+            };
+
+            out->backward_ = [out, a]() {
+                Eigen::MatrixXd tanhOfA = out->data();
+                Eigen::MatrixXd derivative = 1.0 - tanhOfA.array().square();
+                a->grad() += (derivative.array() * out->grad().array()).matrix();
+            };
+
+            out->forward_();
+            return out;
+        }
+
         // pow
         friend ptr pow(const ptr& a, double exp_value) {
             auto out = make_empty_copy(a);
