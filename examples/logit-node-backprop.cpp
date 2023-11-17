@@ -197,6 +197,7 @@ int main(int argc, char *argv[]) {
     //recalc_log_likelihoods(layer);
 
     auto nll = make_nll(layer, filename, 100000);
+    auto topo = topo_sort(nll);
 
 #if 0
     backward(nll);
@@ -206,7 +207,7 @@ int main(int argc, char *argv[]) {
 
     for (int iter=0; iter<300; ++iter) {
         //auto nll = make_nll(layer, filename, 500000);
-        backward(nll);
+        backward_presorted(nll, topo);
 
         std::cerr << "Iter " << iter << ": " << nll << std::endl;
 
@@ -216,7 +217,7 @@ int main(int argc, char *argv[]) {
 
         //std::cerr << "Weights: " << PrettyMatrix(layer.weights()->data()) << std::endl;
 
-        forward(nll);
+        forward_presorted(topo);
 
         //recalc_log_likelihoods(layer);
     }
