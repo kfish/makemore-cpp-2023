@@ -96,7 +96,7 @@ Node make_nll(const F& f, const std::string& filename, int max_words = 100)
 
 Eigen::MatrixXd prob_matrix = Eigen::MatrixXd::Zero(27, 27);
 
-void extract_probability_matrix(const LogitNode<27>& layer) {
+void extract_probability_matrix(const LogitNode<27, 27>& layer) {
 
     for (size_t row=0; row < 27; ++row) {
         Node output = layer(onehots[row]);
@@ -117,7 +117,7 @@ int main(int argc, char *argv[]) {
 
     const std::string filename = argv[1];
 
-    LogitNode<27> layer;
+    LogitNode<27, 27> layer;
     //std::cerr << "Initial Weights: " << PrettyMatrix(layer.weights()->data()) << std::endl;
 
     cache_onehots();
