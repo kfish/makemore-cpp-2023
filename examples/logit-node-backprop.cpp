@@ -87,11 +87,11 @@ Node make_nll(const F& f, const std::string& filename, int max_words = 100)
             if (c < 'a' || c > 'z') continue;
             int curr_index = c_to_i(c);
 
-#if 0
+#if 1
             //auto prev = encode_onehot<double>(prev_index);
             //std::cerr << PrettyArray(prev) << std::endl;
             auto result = f(onehots[prev_index]);
-            loss = loss + log(result->data()(curr_index));
+            loss = loss + log(column(result, curr_index));
 #else
             //loss = loss + column(log_likelihoods[prev_index], curr_index);
             ++counts[prev_index](curr_index);
@@ -101,10 +101,10 @@ Node make_nll(const F& f, const std::string& filename, int max_words = 100)
             prev_index = curr_index;
         }
         if (prev_index != 0) {
-#if 0
+#if 1
             //auto prev = encode_onehot<double>(prev_index);
             auto result = f(onehots[prev_index]);
-            loss = loss + log(result->data()(0));
+            loss = loss + log(column(result, 0));
 #else
             //loss = loss + column(log_likelihoods[prev_index], 0);
             ++counts[prev_index](0);
@@ -114,6 +114,7 @@ Node make_nll(const F& f, const std::string& filename, int max_words = 100)
     }
 
 
+#if 0 // no cache
 #if 1
 
 #if 1
@@ -152,6 +153,7 @@ Node make_nll(const F& f, const std::string& filename, int max_words = 100)
 #endif
         loss = loss + dot(make_node(counts[row]), log_likelihoods[row]);
     }
+#endif
 #endif
 
     std::cerr << "Calculated loss=" << loss << std::endl;
