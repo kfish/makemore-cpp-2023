@@ -157,7 +157,7 @@ class NodeValue {
             base_.initgrad();
         }
 
-        friend std::vector<NodeValue*> topo_sort(const ptr& node, bool reverse=false) {
+        friend std::vector<NodeValue*> topo_sort(const ptr& node) {
             std::vector<NodeValue*> topo;
             std::unordered_map<NodeValue*, bool> visited;
             std::stack<NodeValue*> stack;
@@ -190,17 +190,13 @@ class NodeValue {
                 }
             }
 
-            if (!reverse) {
-                // The topo vector will be in reverse order, so reverse it before returning
-                std::reverse(topo.begin(), topo.end());
-            }
+            // The topo vector will be in reverse order, so reverse it before returning
+            std::reverse(topo.begin(), topo.end());
 
             return topo;
         }
 
-        friend void forward(const ptr& node) {
-            std::vector<NodeValue*> topo = topo_sort(node);
-
+        friend void forward_presorted(const std::vector<NodeValue*>& topo) {
             for (auto it = topo.begin(); it != topo.end(); ++it) {
                 const NodeValue* v = *it;
                 auto f = v->forward_;
@@ -208,9 +204,13 @@ class NodeValue {
             }
         }
 
-        friend void backward(const ptr& node) {
-            std::vector<NodeValue*> topo = topo_sort(node, true);
+        friend void forward(const ptr& node) {
+            std::vector<NodeValue*> topo = topo_sort(node);
 
+            forward_presorted(topo);
+        }
+
+        friend void backward_presorted(const ptr& node, const std::vector<NodeValue*>& topo) {
             // Zero gradients first
             for (auto & v : topo) {
                 v->zerograd();
@@ -218,12 +218,17 @@ class NodeValue {
 
             node->initgrad();
 
-            //for (auto it = topo.rbegin(); it != topo.rend(); ++it) {
-            for (auto it = topo.begin(); it != topo.end(); ++it) {
+            for (auto it = topo.rbegin(); it != topo.rend(); ++it) {
                 const NodeValue* v = *it;
                 auto f = v->backward_;
                 if (f) f();
             }
+        }
+
+        friend void backward(const ptr& node) {
+            std::vector<NodeValue*> topo = topo_sort(node);
+
+            backward_presorted(node, topo);
         }
 
         // operator+
