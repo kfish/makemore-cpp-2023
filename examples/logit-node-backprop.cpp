@@ -13,6 +13,8 @@
 
 using namespace ai;
 
+#define CONTEXT_LENGTH 1
+
 int c_to_i(char c) {
     return (c >= 'a' && c <= 'z') ? c - 'a' + 1 : 0;
 }
@@ -41,6 +43,58 @@ static inline void cache_onehots() {
     }
 }
 
+int process_word(const std::string& input,
+        std::function<void(const Eigen::VectorXd&, int)> train) {
+    std::string_view inputView(input);
+    Eigen::VectorXd contextVec = Eigen::VectorXd::Zero(CONTEXT_LENGTH * 27);
+
+    // Function to update the context vector for a new character
+    auto updateContext = [&](char newChar) {
+        // Shift context to the left by 27 elements
+        contextVec.segment(0, (CONTEXT_LENGTH - 1) * 27) = contextVec.segment(27, (CONTEXT_LENGTH - 1) * 27);
+
+        // Set the last 27 elements to the new character encoding
+        contextVec.segment((CONTEXT_LENGTH - 1) * 27, 27) = encode_onehot(c_to_i(newChar));
+    };
+
+    int n = 0;
+
+    for (size_t i = 0; i <= inputView.size(); ++i) {
+        char nextChar = i < inputView.size() ? tolower(inputView[i]) : '.';
+        train(contextVec, c_to_i(nextChar));
+        ++n;
+
+        // Update the context vector for the next iteration
+        if (i < inputView.size()) {
+            updateContext(nextChar);
+        }
+    }
+
+    return n;
+}
+
+int process_word_bigram(const std::string& input,
+        std::function<void(const Eigen::VectorXd&, int)> train) {
+    int prev_index = 0;
+    int n = 0;
+    for (char c : input) {
+        c = std::tolower(c);
+        if (c < 'a' || c > 'z') continue;
+        int curr_index = c_to_i(c);
+
+        train(encode_onehot(prev_index), curr_index);
+        ++n;
+
+        prev_index = curr_index;
+    }
+    if (prev_index != 0) {
+        train(encode_onehot(prev_index), 0);
+        ++n;
+    }
+
+    return n;
+}
+
 template <typename F>
 Node make_nll(const F& f, const std::string& filename, int max_words = 100)
 {
@@ -53,34 +107,18 @@ Node make_nll(const F& f, const std::string& filename, int max_words = 100)
     Node loss = make_node(0.0);
     int n = 0;
 
-    cache_onehots();
-
     std::string word;
     int num_words = 0;
 
+    auto train = [&](const Eigen::VectorXd& context, int curr_index) -> void {
+        auto result = f(make_node(context));
+        loss = loss + log(column(result, curr_index));
+    };
+
     while (num_words < max_words && file >> word) {
         ++num_words;
-        int prev_index = 0;
-        for (char c : word) {
-            c = std::tolower(c);
-            if (c < 'a' || c > 'z') continue;
-            int curr_index = c_to_i(c);
-
-            //auto prev = encode_onehot<double>(prev_index);
-            //std::cerr << PrettyArray(prev) << std::endl;
-            auto result = f(onehots[prev_index]);
-            loss = loss + log(column(result, curr_index));
-
-            ++n;
-
-            prev_index = curr_index;
-        }
-        if (prev_index != 0) {
-            //auto prev = encode_onehot<double>(prev_index);
-            auto result = f(onehots[prev_index]);
-            loss = loss + log(column(result, 0));
-            ++n;
-        }
+        //n += process_word_bigram(word, train);
+        n += process_word(word, train);
     }
 
     std::cerr << "Calculated loss=" << loss << std::endl;
