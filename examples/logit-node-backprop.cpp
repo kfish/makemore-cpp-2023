@@ -4,7 +4,8 @@
 #include <fstream>
 
 #include "multinomial.h"
-#include "logitnode.h"
+//#include "logitnode.h"
+#include "logitmlp.h"
 #include "onehot.h"
 #include "graph.h"
 #include "pretty.h"
@@ -13,7 +14,7 @@
 
 using namespace ai;
 
-#define CONTEXT_LENGTH 1
+#define CONTEXT_LENGTH 3
 
 int c_to_i(char c) {
     return (c >= 'a' && c <= 'z') ? c - 'a' + 1 : 0;
@@ -73,6 +74,30 @@ int process_word(const std::string& input,
     return n;
 }
 
+std::string generate_word(std::function<char(const Eigen::VectorXd&)> sample_model) {
+    Eigen::VectorXd contextVec = Eigen::VectorXd::Zero(CONTEXT_LENGTH * 27);
+    std::string result;
+
+    // Function to update the context vector for a new character
+    auto updateContext = [&](char newChar) {
+        // Shift context to the left by 27 elements
+        contextVec.segment(0, (CONTEXT_LENGTH - 1) * 27) = contextVec.segment(27, (CONTEXT_LENGTH - 1) * 27);
+
+        // Set the last 27 elements to the new character encoding
+        contextVec.segment((CONTEXT_LENGTH - 1) * 27, 27) = encode_onehot(c_to_i(newChar));
+    };
+
+    for(;;) {
+        char nextChar = sample_model(contextVec);
+        if (nextChar == '.') break;
+
+        result.push_back(nextChar);
+        updateContext(nextChar);
+    }
+
+    return result;
+}
+
 int process_word_bigram(const std::string& input,
         std::function<void(const Eigen::VectorXd&, int)> train) {
     int prev_index = 0;
@@ -96,7 +121,7 @@ int process_word_bigram(const std::string& input,
 }
 
 template <typename F>
-Node make_nll(const F& f, const std::string& filename, int max_words = 100)
+Node make_nll(const F& f, const std::string& filename, int start_word = 0, int max_words = 100)
 {
     std::ifstream file(filename);
     if (!file) {
@@ -108,17 +133,19 @@ Node make_nll(const F& f, const std::string& filename, int max_words = 100)
     int n = 0;
 
     std::string word;
-    int num_words = 0;
 
-    auto train = [&](const Eigen::VectorXd& context, int curr_index) -> void {
+    auto loss_func = [&](const Eigen::VectorXd& context, int curr_index) -> void {
         auto result = f(make_node(context));
         loss = loss + log(column(result, curr_index));
     };
 
-    while (num_words < max_words && file >> word) {
-        ++num_words;
-        //n += process_word_bigram(word, train);
-        n += process_word(word, train);
+    int end_word = start_word + max_words;
+    for (int num_words = 0; num_words < end_word && file >> word; ++num_words) {
+        if (num_words < start_word)
+            continue;
+
+        //n += process_word_bigram(word, loss_func);
+        n += process_word(word, loss_func);
     }
 
     std::cerr << "Calculated loss=" << loss << std::endl;
@@ -131,20 +158,6 @@ Node make_nll(const F& f, const std::string& filename, int max_words = 100)
     return nll;
 }
 
-
-Eigen::MatrixXd prob_matrix = Eigen::MatrixXd::Zero(27, 27);
-
-void extract_probability_matrix(const LogitNode<27, 27>& layer) {
-
-    for (size_t row=0; row < 27; ++row) {
-        Node output = layer(onehots[row]);
-        for (size_t col=0; col < 27; ++col) {
-            prob_matrix(row, col) = output->data()(col);
-        }
-    }
-
-}
-
 int main(int argc, char *argv[]) {
     if (argc == 0) {
         std::cout << "Usage: " << argv[0] << " FILE" << std::endl;
@@ -155,35 +168,48 @@ int main(int argc, char *argv[]) {
 
     const std::string filename = argv[1];
 
-    LogitNode<27, 27> layer;
-    //std::cerr << "Initial Weights: " << PrettyMatrix(layer.weights()->data()) << std::endl;
+    //LogitNode<CONTEXT_LENGTH*27, 27> layer;
+    LogitMLP<CONTEXT_LENGTH*27, 27> layer;
 
     cache_onehots();
 
-    auto nll = make_nll(layer, filename, 100000);
-    auto topo = topo_sort(nll);
+    int train_eval_split = 5000;
 
-#if 0
-    backward(nll);
-    std::cout << Graph(nll) << std::endl;
-    return 0;
-#endif
+    // TRAIN
+    std::cerr << "Start TRAIN..." << std::endl;
+    auto train_nll = make_nll(layer, filename, 0, train_eval_split);
+    auto train_topo = topo_sort(train_nll);
 
     for (int iter=0; iter<300; ++iter) {
-        //auto nll = make_nll(layer, filename, 500000);
-        backward_presorted(nll, topo);
+        backward_presorted(train_nll, train_topo);
 
-        std::cerr << "Iter " << iter << ": " << nll << std::endl;
-
-        //std::cerr << "WGrad: " << PrettyMatrix(layer.weights()->grad()) << std::endl;
+        std::cerr << "Iter " << iter << ": " << train_nll << std::endl;
 
         layer.adjust(50.0);
 
-        //std::cerr << "Weights: " << PrettyMatrix(layer.weights()->data()) << std::endl;
-
-        forward_presorted(topo);
+        forward_presorted(train_topo);
     }
 
+    // EVALUATE
+    std::cerr << "Start EVAL ..." << std::endl;
+    auto eval_nll = make_nll(layer, filename, train_eval_split, 10000);
+    std::cerr << "EVAL: " << eval_nll << std::endl;
+    //auto eval_topo = topo_sort(eval_nll);
+    //forward_presorted(eval_topo);
+
+#if 0
+Eigen::MatrixXd prob_matrix = Eigen::MatrixXd::Zero(CONTEXT_LENGTH*27, 27);
+
+void extract_probability_matrix(const LogitNode<CONTEXT_LENGTH*27, 27>& layer) {
+
+    for (size_t row=0; row < 27; ++row) {
+        Node output = layer(onehots[row]);
+        for (size_t col=0; col < 27; ++col) {
+            prob_matrix(row, col) = output->data()(col);
+        }
+    }
+
+}
     //auto prob_matrix = extract_probability_matrix(layer);
     extract_probability_matrix(layer);
     auto multinomial = MultinomialSampler(prob_matrix);
@@ -200,6 +226,24 @@ int main(int argc, char *argv[]) {
     for (int i=0; i<50; ++i) {
         generate();
     }
+#else
+    std::mt19937 rng = static_mt19937();
+
+    auto sample_model = [&](const Eigen::VectorXd& context) {
+        Node input = make_node(context);
+        Node output = layer(input);
+        Eigen::RowVectorXd row = output->data();
+        std::vector<double> prob_vector(row.data(), row.data() + row.size());
+        std::discrete_distribution<int> dist(prob_vector.begin(), prob_vector.end());
+        int ix = dist(rng);
+        return i_to_c(ix);
+    };
+
+    for (int i=0; i<50; ++i) {
+        auto word = generate_word(sample_model);
+        std::cerr << word << std::endl;
+    }
+#endif
 
     //std::cout << Graph(nll) << std::endl;
 
