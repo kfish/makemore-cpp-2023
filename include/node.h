@@ -23,6 +23,11 @@ class NodeBase {
         NodeBase(const Derived& data, const Derived& grad)
             : data_(data), grad_(grad) {}
 
+        // Return size (rows * cols) of data_
+        auto size() const -> decltype(data_.size()) {
+            return data_.size();
+        }
+
         // Return the number of rows in data_
         auto rows() const -> decltype(data_.rows()) {
             return data_.rows();
@@ -76,6 +81,11 @@ class NodeValue {
 
         const Eigen::MatrixXd& grad() const {
             return base_.grad_;
+        }
+
+        // Forward size() call to base_
+        auto size() const -> decltype(base_.size()) {
+            return base_.size();
         }
 
         // Forward rows() call to base_
