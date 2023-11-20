@@ -1,3 +1,5 @@
+[![CMake on multiple platforms](https://github.com/kfish/makemore-cpp-2023/actions/workflows/cmake-multi-platform.yml/badge.svg)](https://github.com/kfish/makemore-cpp-2023/actions/workflows/cmake-multi-platform.yml)
+
 # makemore-cpp-2023
 
 A C++ implementation of
