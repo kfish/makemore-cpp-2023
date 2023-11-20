@@ -4,8 +4,7 @@
 #include <fstream>
 
 #include "multinomial.h"
-//#include "logitnode.h"
-#include "logitmlp.h"
+#include "logitnode.h"
 #include "onehot.h"
 #include "graph.h"
 #include "pretty.h"
@@ -13,8 +12,6 @@
 #define DEBUG
 
 using namespace ai;
-
-#define CONTEXT_LENGTH 3
 
 int c_to_i(char c) {
     return (c >= 'a' && c <= 'z') ? c - 'a' + 1 : 0;
@@ -42,60 +39,6 @@ static inline void cache_onehots() {
     for (int row=0; row < 27; ++row) {
         onehots[row] = make_node(encode_onehot(row));
     }
-}
-
-int process_word(const std::string& input,
-        std::function<void(const Eigen::VectorXd&, int)> train) {
-    std::string_view inputView(input);
-    Eigen::VectorXd contextVec = Eigen::VectorXd::Zero(CONTEXT_LENGTH * 27);
-
-    // Function to update the context vector for a new character
-    auto updateContext = [&](char newChar) {
-        // Shift context to the left by 27 elements
-        contextVec.segment(0, (CONTEXT_LENGTH - 1) * 27) = contextVec.segment(27, (CONTEXT_LENGTH - 1) * 27);
-
-        // Set the last 27 elements to the new character encoding
-        contextVec.segment((CONTEXT_LENGTH - 1) * 27, 27) = encode_onehot(c_to_i(newChar));
-    };
-
-    int n = 0;
-
-    for (size_t i = 0; i <= inputView.size(); ++i) {
-        char nextChar = i < inputView.size() ? tolower(inputView[i]) : '.';
-        train(contextVec, c_to_i(nextChar));
-        ++n;
-
-        // Update the context vector for the next iteration
-        if (i < inputView.size()) {
-            updateContext(nextChar);
-        }
-    }
-
-    return n;
-}
-
-std::string generate_word(std::function<char(const Eigen::VectorXd&)> sample_model) {
-    Eigen::VectorXd contextVec = Eigen::VectorXd::Zero(CONTEXT_LENGTH * 27);
-    std::string result;
-
-    // Function to update the context vector for a new character
-    auto updateContext = [&](char newChar) {
-        // Shift context to the left by 27 elements
-        contextVec.segment(0, (CONTEXT_LENGTH - 1) * 27) = contextVec.segment(27, (CONTEXT_LENGTH - 1) * 27);
-
-        // Set the last 27 elements to the new character encoding
-        contextVec.segment((CONTEXT_LENGTH - 1) * 27, 27) = encode_onehot(c_to_i(newChar));
-    };
-
-    for(;;) {
-        char nextChar = sample_model(contextVec);
-        if (nextChar == '.') break;
-
-        result.push_back(nextChar);
-        updateContext(nextChar);
-    }
-
-    return result;
 }
 
 int process_word_bigram(const std::string& input,
@@ -144,8 +87,7 @@ Node make_nll(const F& f, const std::string& filename, int start_word = 0, int m
         if (num_words < start_word)
             continue;
 
-        //n += process_word_bigram(word, loss_func);
-        n += process_word(word, loss_func);
+        n += process_word_bigram(word, loss_func);
     }
 
     std::cerr << "Calculated loss=" << loss << std::endl;
@@ -158,6 +100,19 @@ Node make_nll(const F& f, const std::string& filename, int start_word = 0, int m
     return nll;
 }
 
+Eigen::MatrixXd extract_probability_matrix(const LogitNode<27, 27>& layer) {
+    Eigen::MatrixXd prob_matrix = Eigen::MatrixXd::Zero(27, 27);
+
+    for (size_t row=0; row < 27; ++row) {
+        Node output = layer(onehots[row]);
+        for (size_t col=0; col < 27; ++col) {
+            prob_matrix(row, col) = output->data()(col);
+        }
+    }
+
+    return prob_matrix;
+}
+
 int main(int argc, char *argv[]) {
     if (argc == 0) {
         std::cout << "Usage: " << argv[0] << " FILE" << std::endl;
@@ -168,50 +123,24 @@ int main(int argc, char *argv[]) {
 
     const std::string filename = argv[1];
 
-    //LogitNode<CONTEXT_LENGTH*27, 27> layer;
-    LogitMLP<CONTEXT_LENGTH*27, 27> layer;
+    LogitNode<27, 27> layer;
 
     cache_onehots();
 
-    int train_eval_split = 5000;
-
-    // TRAIN
-    std::cerr << "Start TRAIN..." << std::endl;
-    auto train_nll = make_nll(layer, filename, 0, train_eval_split);
-    auto train_topo = topo_sort(train_nll);
+    auto nll = make_nll(layer, filename, 0, 100000);
+    auto topo = topo_sort(nll);
 
     for (int iter=0; iter<300; ++iter) {
-        backward_presorted(train_nll, train_topo);
+        backward_presorted(nll, topo);
 
-        std::cerr << "Iter " << iter << ": " << train_nll << std::endl;
+        std::cerr << "Iter " << iter << ": " << nll << std::endl;
 
         layer.adjust(50.0);
 
-        forward_presorted(train_topo);
+        forward_presorted(topo);
     }
 
-    // EVALUATE
-    std::cerr << "Start EVAL ..." << std::endl;
-    auto eval_nll = make_nll(layer, filename, train_eval_split, 10000);
-    std::cerr << "EVAL: " << eval_nll << std::endl;
-    //auto eval_topo = topo_sort(eval_nll);
-    //forward_presorted(eval_topo);
-
-#if 0
-Eigen::MatrixXd prob_matrix = Eigen::MatrixXd::Zero(CONTEXT_LENGTH*27, 27);
-
-void extract_probability_matrix(const LogitNode<CONTEXT_LENGTH*27, 27>& layer) {
-
-    for (size_t row=0; row < 27; ++row) {
-        Node output = layer(onehots[row]);
-        for (size_t col=0; col < 27; ++col) {
-            prob_matrix(row, col) = output->data()(col);
-        }
-    }
-
-}
-    //auto prob_matrix = extract_probability_matrix(layer);
-    extract_probability_matrix(layer);
+    auto prob_matrix = extract_probability_matrix(layer);
     auto multinomial = MultinomialSampler(prob_matrix);
 
     auto generate = [&]() {
@@ -226,24 +155,6 @@ void extract_probability_matrix(const LogitNode<CONTEXT_LENGTH*27, 27>& layer) {
     for (int i=0; i<50; ++i) {
         generate();
     }
-#else
-    std::mt19937 rng = static_mt19937();
-
-    auto sample_model = [&](const Eigen::VectorXd& context) {
-        Node input = make_node(context);
-        Node output = layer(input);
-        Eigen::RowVectorXd row = output->data();
-        std::vector<double> prob_vector(row.data(), row.data() + row.size());
-        std::discrete_distribution<int> dist(prob_vector.begin(), prob_vector.end());
-        int ix = dist(rng);
-        return i_to_c(ix);
-    };
-
-    for (int i=0; i<50; ++i) {
-        auto word = generate_word(sample_model);
-        std::cerr << word << std::endl;
-    }
-#endif
 
     //std::cout << Graph(nll) << std::endl;
 

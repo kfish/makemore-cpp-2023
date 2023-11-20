@@ -15,6 +15,8 @@ using namespace ai;
 
 #define CONTEXT_LENGTH 3
 
+using Model = LogitMLP<CONTEXT_LENGTH, 27, 6, 70, 27>;
+
 int c_to_i(char c) {
     return (c >= 'a' && c <= 'z') ? c - 'a' + 1 : 0;
 }
@@ -141,7 +143,8 @@ int main(int argc, char *argv[]) {
     const std::string filename = argv[1];
 
     //LogitNode<CONTEXT_LENGTH*27, 27> layer;
-    LogitMLP<CONTEXT_LENGTH, 27, 20, 30, 27> layer;
+    //LogitMLP<CONTEXT_LENGTH, 27, 10, 70, 27> layer;
+    Model layer;
 
     cache_onehots();
 
@@ -157,7 +160,7 @@ int main(int argc, char *argv[]) {
 
         std::cerr << "Iter " << iter << ": " << train_nll << std::endl;
 
-        layer.adjust(20.0);
+        layer.adjust(5.0);
 
         forward_presorted(train_topo);
     }
