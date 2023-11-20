@@ -23,6 +23,11 @@ class NodeBase {
         NodeBase(const Derived& data, const Derived& grad)
             : data_(data), grad_(grad) {}
 
+        // Return size (rows * cols) of data_
+        auto size() const -> decltype(data_.size()) {
+            return data_.size();
+        }
+
         // Return the number of rows in data_
         auto rows() const -> decltype(data_.rows()) {
             return data_.rows();
@@ -76,6 +81,11 @@ class NodeValue {
 
         const Eigen::MatrixXd& grad() const {
             return base_.grad_;
+        }
+
+        // Forward size() call to base_
+        auto size() const -> decltype(base_.size()) {
+            return base_.size();
         }
 
         // Forward rows() call to base_
@@ -418,6 +428,44 @@ class NodeValue {
 
             out->backward_ = [=]() {
                a->grad() += out->grad().transpose();
+            };
+
+            out->forward_();
+            return out;
+        }
+
+        // row_vectorize: to row vector
+        friend ptr row_vectorize(const ptr& a) {
+            auto out = make_empty(1, a->size());
+
+            out->prev_ = {a};
+            out->op_ = "row_vect";
+
+            out->forward_ = [=]() {
+                out->data() = Eigen::Map<Eigen::MatrixXd>(a->data().data(), 1, a->size());
+            };
+
+            out->backward_ = [=]() {
+                a->grad() = Eigen::Map<Eigen::MatrixXd>(out->grad().data(), a->rows(), a->cols());
+            };
+
+            out->forward_();
+            return out;
+        }
+
+        // column_vectorize: to column vector
+        friend ptr column_vectorize(const ptr& a) {
+            auto out = make_empty(a->size(), 1);
+
+            out->prev_ = {a};
+            out->op_ = "col_vect";
+
+            out->forward_ = [=]() {
+                out->data() = Eigen::Map<Eigen::MatrixXd>(a->data().data(), a->size(), 1);
+            };
+
+            out->backward_ = [=]() {
+                a->grad() = Eigen::Map<Eigen::MatrixXd>(out->grad().data(), a->rows(), a->cols());
             };
 
             out->forward_();
