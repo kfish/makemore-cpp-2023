@@ -434,6 +434,44 @@ class NodeValue {
             return out;
         }
 
+        // row_vectorize: to row vector
+        friend ptr row_vectorize(const ptr& a) {
+            auto out = make_empty(1, a->size());
+
+            out->prev_ = {a};
+            out->op_ = "row_vect";
+
+            out->forward_ = [=]() {
+                out->data() = Eigen::Map<Eigen::MatrixXd>(a->data().data(), 1, a->size());
+            };
+
+            out->backward_ = [=]() {
+                a->grad() = Eigen::Map<Eigen::MatrixXd>(out->grad().data(), a->rows(), a->cols());
+            };
+
+            out->forward_();
+            return out;
+        }
+
+        // column_vectorize: to column vector
+        friend ptr column_vectorize(const ptr& a) {
+            auto out = make_empty(a->size(), 1);
+
+            out->prev_ = {a};
+            out->op_ = "col_vect";
+
+            out->forward_ = [=]() {
+                out->data() = Eigen::Map<Eigen::MatrixXd>(a->data().data(), a->size(), 1);
+            };
+
+            out->backward_ = [=]() {
+                a->grad() = Eigen::Map<Eigen::MatrixXd>(out->grad().data(), a->rows(), a->cols());
+            };
+
+            out->forward_();
+            return out;
+        }
+
         friend ptr select_row(const ptr& a, int ix) {
             auto out = make_empty(1, a->cols());
 
