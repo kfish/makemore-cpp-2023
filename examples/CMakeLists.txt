@@ -59,3 +59,8 @@ add_executable(logit-node-backprop logit-node-backprop.cpp)
 add_test(NAME logit-node-backprop
          COMMAND logit-node-backprop)
 target_link_libraries(logit-node-backprop ${PYTHON_LIBRARIES})
+
+add_executable(logit-mlp-backprop logit-mlp-backprop.cpp)
+add_test(NAME logit-mlp-backprop
+         COMMAND logit-mlp-backprop)
+target_link_libraries(logit-mlp-backprop ${PYTHON_LIBRARIES})

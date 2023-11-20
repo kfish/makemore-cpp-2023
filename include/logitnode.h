@@ -4,11 +4,11 @@
 
 namespace ai {
 
-template <size_t N>
+template <size_t N, size_t M>
 class LogitNode {
     public:
         LogitNode()
-            : weights_(make_node(Eigen::MatrixXd(N, N)))
+            : weights_(make_node(Eigen::MatrixXd(N, M)))
         {
         }
 

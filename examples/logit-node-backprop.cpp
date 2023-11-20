@@ -41,8 +41,30 @@ static inline void cache_onehots() {
     }
 }
 
+int process_word_bigram(const std::string& input,
+        std::function<void(const Eigen::VectorXd&, int)> train) {
+    int prev_index = 0;
+    int n = 0;
+    for (char c : input) {
+        c = std::tolower(c);
+        if (c < 'a' || c > 'z') continue;
+        int curr_index = c_to_i(c);
+
+        train(encode_onehot(prev_index), curr_index);
+        ++n;
+
+        prev_index = curr_index;
+    }
+    if (prev_index != 0) {
+        train(encode_onehot(prev_index), 0);
+        ++n;
+    }
+
+    return n;
+}
+
 template <typename F>
-Node make_nll(const F& f, const std::string& filename, int max_words = 100)
+Node make_nll(const F& f, const std::string& filename, int start_word = 0, int max_words = 100)
 {
     std::ifstream file(filename);
     if (!file) {
@@ -53,34 +75,19 @@ Node make_nll(const F& f, const std::string& filename, int max_words = 100)
     Node loss = make_node(0.0);
     int n = 0;
 
-    cache_onehots();
-
     std::string word;
-    int num_words = 0;
 
-    while (num_words < max_words && file >> word) {
-        ++num_words;
-        int prev_index = 0;
-        for (char c : word) {
-            c = std::tolower(c);
-            if (c < 'a' || c > 'z') continue;
-            int curr_index = c_to_i(c);
+    auto loss_func = [&](const Eigen::VectorXd& context, int curr_index) -> void {
+        auto result = f(make_node(context));
+        loss = loss + log(column(result, curr_index));
+    };
 
-            //auto prev = encode_onehot<double>(prev_index);
-            //std::cerr << PrettyArray(prev) << std::endl;
-            auto result = f(onehots[prev_index]);
-            loss = loss + log(column(result, curr_index));
+    int end_word = start_word + max_words;
+    for (int num_words = 0; num_words < end_word && file >> word; ++num_words) {
+        if (num_words < start_word)
+            continue;
 
-            ++n;
-
-            prev_index = curr_index;
-        }
-        if (prev_index != 0) {
-            //auto prev = encode_onehot<double>(prev_index);
-            auto result = f(onehots[prev_index]);
-            loss = loss + log(column(result, 0));
-            ++n;
-        }
+        n += process_word_bigram(word, loss_func);
     }
 
     std::cerr << "Calculated loss=" << loss << std::endl;
@@ -93,10 +100,8 @@ Node make_nll(const F& f, const std::string& filename, int max_words = 100)
     return nll;
 }
 
-
-Eigen::MatrixXd prob_matrix = Eigen::MatrixXd::Zero(27, 27);
-
-void extract_probability_matrix(const LogitNode<27>& layer) {
+Eigen::MatrixXd extract_probability_matrix(const LogitNode<27, 27>& layer) {
+    Eigen::MatrixXd prob_matrix = Eigen::MatrixXd::Zero(27, 27);
 
     for (size_t row=0; row < 27; ++row) {
         Node output = layer(onehots[row]);
@@ -105,6 +110,7 @@ void extract_probability_matrix(const LogitNode<27>& layer) {
         }
     }
 
+    return prob_matrix;
 }
 
 int main(int argc, char *argv[]) {
@@ -117,37 +123,24 @@ int main(int argc, char *argv[]) {
 
     const std::string filename = argv[1];
 
-    LogitNode<27> layer;
-    //std::cerr << "Initial Weights: " << PrettyMatrix(layer.weights()->data()) << std::endl;
+    LogitNode<27, 27> layer;
 
     cache_onehots();
 
-    auto nll = make_nll(layer, filename, 100000);
+    auto nll = make_nll(layer, filename, 0, 100000);
     auto topo = topo_sort(nll);
 
-#if 0
-    backward(nll);
-    std::cout << Graph(nll) << std::endl;
-    return 0;
-#endif
-
     for (int iter=0; iter<300; ++iter) {
-        //auto nll = make_nll(layer, filename, 500000);
         backward_presorted(nll, topo);
 
         std::cerr << "Iter " << iter << ": " << nll << std::endl;
 
-        //std::cerr << "WGrad: " << PrettyMatrix(layer.weights()->grad()) << std::endl;
-
         layer.adjust(50.0);
-
-        //std::cerr << "Weights: " << PrettyMatrix(layer.weights()->data()) << std::endl;
 
         forward_presorted(topo);
     }
 
-    //auto prob_matrix = extract_probability_matrix(layer);
-    extract_probability_matrix(layer);
+    auto prob_matrix = extract_probability_matrix(layer);
     auto multinomial = MultinomialSampler(prob_matrix);
 
     auto generate = [&]() {
