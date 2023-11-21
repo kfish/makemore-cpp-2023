@@ -22,6 +22,10 @@ class LogitNeuron {
         {
         }
 
+        size_t model_params() const {
+            return Nin;
+        }
+
         Value<T> operator()(const std::array<Value<T>, Nin>& x) const {
             Value<T> zero = make_value<T>(0.0);
             Value<T> y = mac(weights_, x, zero);
@@ -61,6 +65,11 @@ class LogitLayer {
 
             return norm(counts);
         }
+
+        size_t model_params() const {
+            return Nout * neurons_[0].model_params();
+        }
+
         const std::array<LogitNeuron<T, Nin>, Nout> neurons() const {
             return neurons_;
         }
