@@ -206,6 +206,23 @@ class NodeValue {
             return topo;
         }
 
+        friend size_t count_params_presorted(const std::vector<NodeValue*>& topo) {
+            size_t num_params = 0;
+
+            for (auto it = topo.begin(); it != topo.end(); ++it) {
+                const NodeValue* v = *it;
+                num_params += v->size();
+            }
+
+            return num_params;
+        }
+
+        friend size_t count_params(const ptr& node) {
+            std::vector<NodeValue*> topo = topo_sort(node);
+
+            return count_params_presorted(topo);
+        }
+
         friend void forward_presorted(const std::vector<NodeValue*>& topo) {
             for (auto it = topo.begin(); it != topo.end(); ++it) {
                 const NodeValue* v = *it;

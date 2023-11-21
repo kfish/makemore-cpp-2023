@@ -171,10 +171,13 @@ int main(int argc, char *argv[]) {
     cache_onehots();
 
     LogitLayer<double, 27, 27> layer;
+    std::cout << "Model: " << layer.model_params() << " params" << std::endl;
 
     //recalc_log_likelihoods(layer);
 
     auto nll = make_nll(layer, filename, 500000);
+
+    std::cerr << "nll: " << count_params(nll) << " params" << std::endl;
 
 #if 0
     backward(nll);

@@ -36,6 +36,10 @@ class RawValue {
             return v;
         }
 
+        size_t size() const {
+            return 1;
+        }
+
         const T& data() const {
             return data_;
         }
@@ -65,6 +69,32 @@ class RawValue {
             for (auto c : prev_) {
                 c->zerograd();
             }
+        }
+
+        friend size_t count_params(const ptr& node) {
+            std::vector<RawValue<T>*> topo;
+            std::set<RawValue<T>*> visited;
+
+            std::function<void(const ptr&)> build_topo = [&](const ptr& v) {
+                if (!visited.contains(v.get())) {
+                    visited.insert(v.get());
+                    for (auto && c : v->children()) {
+                        build_topo(c);
+                    }
+                    topo.push_back(v.get());
+                }
+            };
+
+            build_topo(node);
+
+            size_t num_params = 0;
+
+            for (auto it = topo.begin(); it != topo.end(); ++it) {
+                const RawValue<T>* v = *it;
+                num_params += v->size();
+            }
+
+            return num_params;
         }
 
         friend void forward(const ptr& node) {

@@ -12,6 +12,10 @@ class LogitNode {
         {
         }
 
+        size_t model_params() const {
+            return count_params(weights_);
+        }
+
         const Node& weights() const {
             return weights_;
         }

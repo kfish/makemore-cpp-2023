@@ -124,11 +124,14 @@ int main(int argc, char *argv[]) {
     const std::string filename = argv[1];
 
     LogitNode<27, 27> layer;
+    std::cout << "Model: " << layer.model_params() << " params" << std::endl;
 
     cache_onehots();
 
     auto nll = make_nll(layer, filename, 0, 100000);
     auto topo = topo_sort(nll);
+
+    std::cerr << "nll: " << count_params_presorted(topo) << " params" << std::endl;
 
     for (int iter=0; iter<300; ++iter) {
         backward_presorted(nll, topo);

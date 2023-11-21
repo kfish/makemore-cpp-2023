@@ -146,6 +146,8 @@ int main(int argc, char *argv[]) {
     //LogitMLP<CONTEXT_LENGTH, 27, 10, 70, 27> layer;
     Model layer;
 
+    std::cout << "Model: " << layer.model_params() << " params" << std::endl;
+
     cache_onehots();
 
     int train_eval_split = 25000;
@@ -154,6 +156,8 @@ int main(int argc, char *argv[]) {
     std::cerr << "Start TRAIN..." << std::endl;
     auto train_nll = make_nll(layer, filename, 0, train_eval_split);
     auto train_topo = topo_sort(train_nll);
+
+    std::cerr << "train_nll: " << count_params_presorted(train_topo) << " params" << std::endl;
 
     for (int iter=0; iter<100; ++iter) {
         backward_presorted(train_nll, train_topo);
@@ -169,7 +173,8 @@ int main(int argc, char *argv[]) {
     // EVALUATE
     std::cerr << "Start EVAL ..." << std::endl;
     auto eval_nll = make_nll(layer, filename, train_eval_split, 10000);
-    std::cerr << "EVAL: " << eval_nll << std::endl;
+    std::cerr << "EVAL: " << eval_nll << ": "
+        << count_params(eval_nll) << " params" << std::endl;
     //auto eval_topo = topo_sort(eval_nll);
     //forward_presorted(eval_topo);
 

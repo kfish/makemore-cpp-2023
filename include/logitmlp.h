@@ -16,6 +16,10 @@ class LogitMLP {
         {
         }
 
+        size_t model_params() const {
+            return count_params(C_) + count_params(hidden_) + count_params(weights_) + count_params(bias_);
+        }
+
         const Node& weights() const {
             return weights_;
         }
