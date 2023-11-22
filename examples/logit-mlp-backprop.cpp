@@ -94,9 +94,10 @@ std::string generate_word(std::function<char(const Eigen::MatrixXd&)> sample_mod
 }
 
 template <typename F>
-Node make_nll(const F& f, const std::string& filename, int start_word = 0, int max_words = 100)
+Node make_nll(const F& f, const std::string& filename, int max_words = 100)
 {
-    auto words = read_file(filename);
+    auto all_words = read_file(filename);
+    auto words = extract_minibatch(all_words, max_words);
 
     Node loss = make_node(0.0);
     int n = 0;
@@ -109,11 +110,8 @@ Node make_nll(const F& f, const std::string& filename, int start_word = 0, int m
         loss = loss + log(column(result, curr_index));
     };
 
-    int end_word = std::min(static_cast<int>(words.size()), start_word + max_words);
+    int end_word = std::min(static_cast<int>(words.size()), max_words);
     for (int num_words = 0; num_words < end_word; ++num_words) {
-        if (num_words < start_word)
-            continue;
-
         //n += process_word_bigram(words[num_words], loss_func);
         n += process_word(words[num_words], loss_func);
     }
@@ -144,11 +142,12 @@ int main(int argc, char *argv[]) {
 
     cache_onehots();
 
-    int train_eval_split = 25000;
+    int train_count = 25000;
+    int eval_count = 10000;
 
     // TRAIN
     std::cerr << "Start TRAIN..." << std::endl;
-    auto train_nll = make_nll(layer, filename, 0, train_eval_split);
+    auto train_nll = make_nll(layer, filename, train_count);
     auto train_topo = topo_sort(train_nll);
 
     std::cerr << "train_nll: " << count_params_presorted(train_topo) << " params" << std::endl;
@@ -166,7 +165,7 @@ int main(int argc, char *argv[]) {
 
     // EVALUATE
     std::cerr << "Start EVAL ..." << std::endl;
-    auto eval_nll = make_nll(layer, filename, train_eval_split, 10000);
+    auto eval_nll = make_nll(layer, filename, eval_count);
     std::cerr << "EVAL: " << eval_nll << ": "
         << count_params(eval_nll) << " params" << std::endl;
     //auto eval_topo = topo_sort(eval_nll);
