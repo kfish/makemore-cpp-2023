@@ -1,3 +1,5 @@
+#pragma once
+
 #include <random>
 #include <Eigen/Dense>
 #include <vector>

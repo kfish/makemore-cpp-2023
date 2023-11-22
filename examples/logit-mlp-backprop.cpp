@@ -3,7 +3,7 @@
 #include <ostream>
 #include <fstream>
 
-#include "multinomial.h"
+#include "modelsampler.h"
 #include "logitmlp.h"
 #include "onehot.h"
 #include "graph.h"
@@ -142,8 +142,6 @@ int main(int argc, char *argv[]) {
 
     const std::string filename = argv[1];
 
-    //LogitNode<CONTEXT_LENGTH*27, 27> layer;
-    //LogitMLP<CONTEXT_LENGTH, 27, 10, 70, 27> layer;
     Model layer;
 
     std::cout << "Model: " << layer.model_params() << " params" << std::endl;
@@ -178,15 +176,10 @@ int main(int argc, char *argv[]) {
     //auto eval_topo = topo_sort(eval_nll);
     //forward_presorted(eval_topo);
 
-    std::mt19937 rng = static_mt19937();
+    auto model_sampler = ModelSampler(layer);
 
-    auto sample_model = [&](const Eigen::MatrixXd& context) {
-        Node input = make_node(context);
-        Node output = layer(input);
-        Eigen::RowVectorXd row = output->data();
-        std::vector<double> prob_vector(row.data(), row.data() + row.size());
-        std::discrete_distribution<int> dist(prob_vector.begin(), prob_vector.end());
-        int ix = dist(rng);
+    auto sample_model = [&](const Eigen::MatrixXd& context) -> char {
+        int ix = model_sampler(context);
         return i_to_c(ix);
     };
 
