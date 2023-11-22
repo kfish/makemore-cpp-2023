@@ -1,8 +1,8 @@
 
 #include <iostream>
 #include <ostream>
-#include <fstream>
 
+#include "batch.h"
 #include "multinomial.h"
 #include "logitnode.h"
 #include "onehot.h"
@@ -66,11 +66,7 @@ int process_word_bigram(const std::string& input,
 template <typename F>
 Node make_nll(const F& f, const std::string& filename, int start_word = 0, int max_words = 100)
 {
-    std::ifstream file(filename);
-    if (!file) {
-        std::cerr << "Failed to open file." << std::endl;
-        return make_node(0.0);
-    }
+    auto words = read_file(filename);
 
     Node loss = make_node(0.0);
     int n = 0;
@@ -82,12 +78,12 @@ Node make_nll(const F& f, const std::string& filename, int start_word = 0, int m
         loss = loss + log(column(result, curr_index));
     };
 
-    int end_word = start_word + max_words;
-    for (int num_words = 0; num_words < end_word && file >> word; ++num_words) {
+    int end_word = std::min(static_cast<int>(words.size()), start_word + max_words);
+    for (int num_words = 0; num_words < end_word; ++num_words) {
         if (num_words < start_word)
             continue;
 
-        n += process_word_bigram(word, loss_func);
+        n += process_word_bigram(words[num_words], loss_func);
     }
 
     std::cerr << "Calculated loss=" << loss << std::endl;

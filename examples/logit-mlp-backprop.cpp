@@ -114,7 +114,7 @@ Node make_nll(const F& f, const std::string& filename, int start_word = 0, int m
         if (num_words < start_word)
             continue;
 
-        //n += process_word_bigram(word, loss_func);
+        //n += process_word_bigram(words[num_words], loss_func);
         n += process_word(words[num_words], loss_func);
     }
 
