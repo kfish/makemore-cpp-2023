@@ -25,7 +25,7 @@ is included.
 
 ### matplotlib-cpp
 
-[Cryoris/matplotlib-cpp](https://github.com/Cryoris/matplotlib-cpp)
+[kfish/matplotlib-cpp](https://github.com/kfish/matplotlib-cpp)
 
 ```bash
 $ sudo apt update
