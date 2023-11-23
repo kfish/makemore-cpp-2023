@@ -1,6 +1,6 @@
 #include <iostream>
-#include <fstream>
 
+#include "batch.h"
 #include "multinomial.h"
 #include "logitlayer.h"
 #include "onehot.h"
@@ -61,11 +61,7 @@ void recalc_log_likelihoods(const F& f) {
 template <typename F>
 Value<double> make_nll(const F& f, const std::string& filename, int max_words = 100)
 {
-    std::ifstream file(filename);
-    if (!file) {
-        std::cerr << "Failed to open file." << std::endl;
-        return make_value<double>(0.0);
-    }
+    auto words = read_file(filename);
 
     Value<double> loss = make_value(0.0);
     int n = 0;
@@ -78,13 +74,13 @@ Value<double> make_nll(const F& f, const std::string& filename, int max_words = 
         }
     }
 
-    std::string word;
     int num_words = 0;
+    int end_word = std::min(static_cast<int>(words.size()), max_words);
 
-    while (num_words < max_words && file >> word) {
+    while (num_words < end_word) {
         ++num_words;
         int prev_index = 0;
-        for (char c : word) {
+        for (char c : words[num_words]) {
             c = std::tolower(c);
             if (c < 'a' || c > 'z') continue;
             int curr_index = c_to_i(c);
