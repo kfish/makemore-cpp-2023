@@ -4,6 +4,28 @@
 
 A C++ implementation of
 [karpathy/makemore](https://github.com/karpathy/makemore).
+
+Over a series of videos, episodes 2-5 of *Neural Nets: Zero to Hero*, Andrej Karpathy details how to build a simple generative model.
+This repository follows the thread of these videos, with the aim of developing a corresponding platform in C++. This platform includes
+reusable code for:
+  * building larger models that can be trained via backpropagation
+  * visualization of matrices and plots of training data
+  * training and sampling from models
+
+These steps are essential for doing research on neural nets, so that the full cycle of trying out ideas and evaluating them can be done
+with a few lines of code.
+
+# Episode 1
+
+"Building micrograd" spelled out backpropagation and training of neural nets. I implemented a C++ version of that in
+[kfish/micrograd-cpp-2023](https://github.com/kfish/micrograd-cpp-2023).
+
+This repository (makemore-cpp-2023) continues on from there, expanding the automatically differentiable `Value<T>` object to operate over vectors and matrices.
+
+# Episode 2
+
+![](https://i.ytimg.com/vi/PaCmpygFfXo/hqdefault.jpg)
+
 Each step of the second episode of *Neural Nets: Zero to Hero*:
 [The spelled-out intro to language modeling: building makemore](
 https://youtu.be/PaCmpygFfXo)
@@ -33,6 +55,8 @@ $ sudo apt install python3 python3-dev python3-matplotlib
 ```
 
 ### Bigram Frequencies
+
+We can visualize the bigram tensor
 
 ![Frequency plot](examples/bigram.png)
 
@@ -80,6 +104,8 @@ public:
 
 [Reductions, visitors and Broadcasting](https://eigen.tuxfamily.org/dox/group__TutorialReductionsVisitorsBroadcasting.html)
 
+### Loss function
+
 ## The Neural Network Approach
 
 ### OneHot Encoding
@@ -109,6 +135,7 @@ and visualize this to make it a little more clear:
 
     auto xenc = encode_onehot(xs);
 
+    plt::figure_size(640, 180);
     plt::imshow(xenc);
 ```
 
