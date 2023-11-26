@@ -5,22 +5,26 @@
 A C++ implementation of
 [karpathy/makemore](https://github.com/karpathy/makemore).
 
-Over a series of videos, episodes 2-5 of *Neural Nets: Zero to Hero*, Andrej Karpathy details how to build a simple generative model.
-This repository follows the thread of these videos, with the aim of developing a corresponding platform in C++. This platform includes
-reusable code for:
+Over a series of videos, episodes 2-5 of *Neural Nets: Zero to Hero*, Andrej Karpathy
+details how to build a simple generative model.
+This repository follows the thread of these videos, with the aim of developing a
+corresponding platform in C++. This platform includes reusable code for:
   * building larger models that can be trained via backpropagation
   * visualization of matrices and plots of training data
   * training and sampling from models
 
-These steps are essential for doing research on neural nets, so that the full cycle of trying out ideas and evaluating them can be done
-with a few lines of code.
+These steps are essential for doing research on neural nets, so that the full cycle of
+trying out ideas and evaluating them can be done with a few lines of code.
 
 # Episode 1
 
-*Building micrograd* spelled out backpropagation and training of neural nets. I implemented a C++ version of that in
+*Building micrograd* spelled out backpropagation and training of neural nets.
+I implemented a C++ version of that in
 [kfish/micrograd-cpp-2023](https://github.com/kfish/micrograd-cpp-2023).
 
-This repository (makemore-cpp-2023) continues on from there, expanding the automatically differentiable `Value<T>` object to operate over vectors and matrices.
+This repository (makemore-cpp-2023) continues on from there, expanding the automatically
+differentiable `Value<T>` object to use vector and matrix operations.
+This extension is crucial for applying automatic differentiation in a broader context.
 
 # Episode 2
 
@@ -45,7 +49,7 @@ is included.
 
 ## Intro
 
-make more makes more of things like what you give it.
+makemore makes more of things like what you give it.
 generate unique names, like what you give it
 
 Generate sequences of characters
@@ -54,31 +58,51 @@ Generate sequences of characters
 
 ## Bigram Language Model
 
+This section implements a Bigram Language Model using `matplotlib-cpp` for visualization. It involves calculating
+bigram frequencies and developing a multinomial sampler.
+
+Bigram language models are foundational tools in natural language processing that predict the probability of a word
+based on the preceding word. They simplify the complexity of language by considering only immediate word pairs,
+forming the basis for more complex language models.
+
+Here we work with individual characters instead of words.
 Working with just 2 characters at a time: given one character, what character is likely to follow.
 Count how often one character follows another.
 
 ### Eigen
 
-We'll use the [Eigen](https://eigen.tuxfamily.org/index.php?title=Main_Page) library for matrices.
-This is an easy to use library with vectorization for CPU optimizations
+[Eigen](https://eigen.tuxfamily.org/index.php?title=Main_Page)
+is a high-level C++ library for linear algebra, matrix and vector operations, and related mathematical computations.
+It is used in this project for its efficiency in handling large-scale matrix operations.
 
 [examples/bigram.cpp](examples/bigram.cpp)
 
 ### matplotlib-cpp
 
-We want to be able to do all teh cool visualizations like python people get
-Compatibility
-Similar plots etc do research
+matplotlib-cpp is a C++ wrapper around the Python matplotlib library.
 
+This allows us to use the same visualizations that the machine learning community uses
+for research.
 
+I've forked matplotlib-cpp with some small changes required:
 [kfish/matplotlib-cpp](https://github.com/kfish/matplotlib-cpp)
+
+In order to use this, you'll need to install some Python development packages, required for
+linking C/C++ code against a Python interpreter:
+
 
 ```bash
 $ sudo apt update
 $ sudo apt install python3 python3-dev python3-matplotlib
 ```
 
+Note that Python will only be used for visualization: the core neural net training and
+sampling is all implemented in C++.
+
 ### Bigram Frequencies
+
+Bigram frequencies refer to the counts of how often pairs of consecutive words occur in a given
+dataset. This helps in calculating the probability of word sequences.
 
 The most direct statistical model records how often pairs of letters occur
 
@@ -90,7 +114,9 @@ We can visualize the bigram tensor
 
 The C++ standard library provides soem basic types for random number generation and using probability distributions.
 
-We use thse
+Using the C++ standard library for probability distributions offers reliability, efficiency, and integration
+with the broader C++ ecosystem. It provides optimized routines for generating random numbers and sampling
+from various distributions.
 
 [std::discrete_distribution](https://en.cppreference.com/w/cpp/numeric/random/discrete_distribution)
 
@@ -132,22 +158,20 @@ public:
 
 ### Broadcasting Rules
 
-Important because
-good to know ...
-
+Broadcasting rules in the context of this project refer to the automatic expansion of matrices or vectors
+to compatible sizes during operations. This is crucial in matrix computations, particularly in neural
+networks, where operations often involve matrices and vectors of different shapes.
 
 [Reductions, visitors and Broadcasting](https://eigen.tuxfamily.org/dox/group__TutorialReductionsVisitorsBroadcasting.html)
 
 ### Loss function
 
-THe loss function here is:
+The negative log likelihood is used as a loss function because it quantifies how well the model's predicted probabilities match the actual data, making it highly effective for training probabilistic models like those used in language processing.
 
-negative log likelihood
+The negative log likelihood is particularly useful because it penalizes incorrect predictions more heavily than other loss functions, leading to a more accurate and robust model, especially in scenarios like language modeling where probability distributions are key.
 
 If the value of the matrix at each (prev, curr) character represents the likelihood that curr follows prev, then
 
-we take the log of these (why??) and then normalize, ie. sum them and divide by how many there are.
-Seriously don't write like this watf 
 
 ```cpp
 
@@ -155,14 +179,15 @@ Seriously don't write like this watf
 
 ## The Neural Network Approach
 
-We will gradually replace the bigram model with a neural net WHY
+We will gradually replace the bigram model with a neural net
 longer context
 eventually we want to predict based on long context
 
 
 ### OneHot Encoding
 
-Simplicity?
+Onehot encoding is used for its simplicity and effectiveness in representing categorical data, like words in language modeling, as binary vectors.
+This format is computationally efficient and simplifies the process of inputting data into neural network models.
 
 Long vector, zeroes and one one in the location of the value
 
@@ -350,3 +375,5 @@ class ModelSampler {
         const F& func_;
 };      
 ```
+
+
