@@ -17,7 +17,7 @@ with a few lines of code.
 
 # Episode 1
 
-"Building micrograd" spelled out backpropagation and training of neural nets. I implemented a C++ version of that in
+*Building micrograd* spelled out backpropagation and training of neural nets. I implemented a C++ version of that in
 [kfish/micrograd-cpp-2023](https://github.com/kfish/micrograd-cpp-2023).
 
 This repository (makemore-cpp-2023) continues on from there, expanding the automatically differentiable `Value<T>` object to operate over vectors and matrices.
@@ -43,9 +43,33 @@ is included.
    - [Smoothing](#smoothing)
    - [Sampling](#sampling)
 
+## Intro
+
+make more makes more of things like what you give it.
+generate unique names, like what you give it
+
+Generate sequences of characters
+
+[names.txt](names.txt)
+
 ## Bigram Language Model
 
+Working with just 2 characters at a time: given one character, what character is likely to follow.
+Count how often one character follows another.
+
+### Eigen
+
+We'll use the [Eigen](https://eigen.tuxfamily.org/index.php?title=Main_Page) library for matrices.
+This is an easy to use library with vectorization for CPU optimizations
+
+[examples/bigram.cpp](examples/bigram.cpp)
+
 ### matplotlib-cpp
+
+We want to be able to do all teh cool visualizations like python people get
+Compatibility
+Similar plots etc do research
+
 
 [kfish/matplotlib-cpp](https://github.com/kfish/matplotlib-cpp)
 
@@ -56,11 +80,17 @@ $ sudo apt install python3 python3-dev python3-matplotlib
 
 ### Bigram Frequencies
 
+The most direct statistical model records how often pairs of letters occur
+
 We can visualize the bigram tensor
 
 ![Frequency plot](examples/bigram.png)
 
 ### Multinomial Sampler
+
+The C++ standard library provides soem basic types for random number generation and using probability distributions.
+
+We use thse
 
 [std::discrete_distribution](https://en.cppreference.com/w/cpp/numeric/random/discrete_distribution)
 
@@ -102,13 +132,41 @@ public:
 
 ### Broadcasting Rules
 
+Important because
+good to know ...
+
+
 [Reductions, visitors and Broadcasting](https://eigen.tuxfamily.org/dox/group__TutorialReductionsVisitorsBroadcasting.html)
 
 ### Loss function
 
+THe loss function here is:
+
+negative log likelihood
+
+If the value of the matrix at each (prev, curr) character represents the likelihood that curr follows prev, then
+
+we take the log of these (why??) and then normalize, ie. sum them and divide by how many there are.
+Seriously don't write like this watf 
+
+```cpp
+
+```
+
 ## The Neural Network Approach
 
+We will gradually replace the bigram model with a neural net WHY
+longer context
+eventually we want to predict based on long context
+
+
 ### OneHot Encoding
+
+Simplicity?
+
+Long vector, zeroes and one one in the location of the value
+
+Operates as a selection vector (why ... move this later)
 
 ```c++
 static inline Eigen::VectorXd encode_onehot(char c) {
@@ -142,6 +200,8 @@ and visualize this to make it a little more clear:
 ![OneHot Emma](examples/onehot-emma.png)
 
 ### LogitLayer
+
+First we want to implement using the Value<T> we developed in micrograd-cpp-2023
 
 ```c++
 template <typename T, size_t Nin>
@@ -192,6 +252,8 @@ class LogitLayer {
 ```
 ### LogitNode
 
+Next we develop a Node class using Eigen matrices
+
 ```c++
 template <size_t N, size_t M>
 class LogitNode {
@@ -215,6 +277,8 @@ class LogitNode {
 ```
 
 ### LogitMLP
+
+Expand LogitNode to include extra weights and biases and tanh
 
 ```c++
 template <size_t ContextLength, size_t N, size_t E, size_t H, size_t M>
@@ -255,6 +319,9 @@ square and sum all entries: zero loss if W near zero
 
 ### Sampling
 
+General class for sampling from a model
+Usable on any model based on Node
+
 ```c++
 template <typename F>
 class ModelSampler {
@@ -283,5 +350,3 @@ class ModelSampler {
         const F& func_;
 };      
 ```
-
-Extract probability matrix, use multinomial sampler
