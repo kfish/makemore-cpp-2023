@@ -3,7 +3,7 @@
 # makemore-cpp-2023
 
 A C++ implementation of
-[karpathy/makemore](https://github.com/karpathy/makemore).
+[karpathy/makemore](https://github.com/karpathy/makemore), a toy system for generative AI.
 
 Over a series of videos, episodes 2-5 of *Neural Nets: Zero to Hero*, Andrej Karpathy
 details how to build a simple generative model.
@@ -15,6 +15,8 @@ corresponding platform in C++. This platform includes reusable code for:
 
 These steps are essential for doing research on neural nets, so that the full cycle of
 trying out ideas and evaluating them can be done with a few lines of code.
+
+---
 
 # Episode 1
 
@@ -35,10 +37,13 @@ Each step of the second episode of *Neural Nets: Zero to Hero*:
 https://youtu.be/PaCmpygFfXo)
 is included.
 
+ * [Intro](#intro)
  * [Bigram Language Model](#bigram-language-model)
+   - [Eigen](#eigen)
    - [matplotlib-cpp](#matplotlib-cpp)
    - [Bigram Frequencies](#bigram-frequencies)
    - [Multinomial Sampler](#multinomial-sampler)
+   - [Loss function](#loss-function)
    - [Broadcasting Rules](#broadcasting-rules)
 
  * [The Neural Network Approach](#the-neural-network-approach)
@@ -49,15 +54,16 @@ is included.
 
 ## Intro
 
-makemore "makes more of things like what you give it" -- a toy system for generative AI.
+makemore "makes more of things like what you give it".
 What it generates is unique names, made from sequences of characters, one letter at a time.
-
 It is trained on a large list of common names, [names.txt](names.txt).
 
 To demonstrate the concept of building a model, training and evaluating it, we first make
 a complete statistical model by counting often each pair of letters occurs.
 
 We then replace the model itself with a neural network, and tweak that.
+
+---
 
 ## Bigram Language Model
 
@@ -285,6 +291,8 @@ and negate it so that smaller is better. We call the result the *negative log-li
 > Eigen requires you to be explicit about which dimensions you are replicating using `.colwise()` or `.rowwise()`,
 > so there is little chance of surprising errors. For details see the Eigen documentation,
 > [Reductions, visitors and Broadcasting](https://eigen.tuxfamily.org/dox/group__TutorialReductionsVisitorsBroadcasting.html).
+
+---
 
 ## The Neural Network Approach
 
