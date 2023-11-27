@@ -49,40 +49,52 @@ is included.
 
 ## Intro
 
-makemore makes more of things like what you give it.
-generate unique names, like what you give it
+makemore "makes more of things like what you give it" -- a toy system for generative AI.
+What it generates is unique names, made from sequences of characters, one letter at a time.
 
-Generate sequences of characters
+It is trained on a large list of common names, [names.txt](names.txt).
+To demonstrate the concept of building a model, training and evaluating it, we first make
+a complete statistical model by counting often each pair of letters occurs.
 
-[names.txt](names.txt)
+We then replace the model itself with a neural network, and tweak that.
 
 ## Bigram Language Model
 
-This section implements a Bigram Language Model using `matplotlib-cpp` for visualization. It involves calculating
-bigram frequencies and developing a multinomial sampler.
+This section implements a Bigram Language Model using `matplotlib-cpp` for visualization.
+It involves calculating bigram frequencies and developing a multinomial sampler.
 
-Bigram language models are foundational tools in natural language processing that predict the probability of a word
-based on the preceding word. They simplify the complexity of language by considering only immediate word pairs,
-forming the basis for more complex language models.
+![Bigram Frequencies](examples/bigram.png)
 
-Here we work with individual characters instead of words.
-Working with just 2 characters at a time: given one character, what character is likely to follow.
-Count how often one character follows another.
+For example 4410 names start with the letter `a` , which we can prove to ourselves with grep:
+
+```bash
+$ grep -c ^a names.txt
+4410
+```
+
+We can think of each row of the matrix as telling us what the likelihood of the next letter is. The top row
+tells us the likelihood of the first letter in a name (`a` is more likely than `u`).
+If we chose an `a`, the next letter is very likely to be `n` or `l`, and unlikely to be `q` or `o`.
+
+The rest of this section explains the code in [examples/bigram.cpp](examples/bigram.cpp)
+for calculating these probabilities, rendering the table, and generating new names.
+
+*Skip to [The Neural Network Approach](#the-neural-network-approach).*
 
 ### Eigen
 
-[Eigen](https://eigen.tuxfamily.org/index.php?title=Main_Page)
-is a high-level C++ library for linear algebra, matrix and vector operations, and related mathematical computations.
-It is used in this project for its efficiency in handling large-scale matrix operations.
+We're going to need to manipulate matrices of numbers. We won't need to do complex linear algebra here but
+it is useful to be able to select rows and columns of numbers and apply logs and exponents to everything.
+When we build out the neural net we'll do some matrix multiplications and transposes.
 
-[examples/bigram.cpp](examples/bigram.cpp)
+[Eigen](https://eigen.tuxfamily.org/index.php?title=Main_Page)
+is a high-level C++ library for linear algebra, matrix and vector operations.
+It can make use of vectorized CPU instructions so it's efficient enough to get started.
 
 ### matplotlib-cpp
 
 matplotlib-cpp is a C++ wrapper around the Python matplotlib library.
-
-This allows us to use the same visualizations that the machine learning community uses
-for research.
+This allows us to use the same visualizations that the machine learning community uses for research.
 
 I've forked matplotlib-cpp with some small changes required:
 [kfish/matplotlib-cpp](https://github.com/kfish/matplotlib-cpp)
@@ -101,24 +113,56 @@ sampling is all implemented in C++.
 
 ### Bigram Frequencies
 
-Bigram frequencies refer to the counts of how often pairs of consecutive words occur in a given
-dataset. This helps in calculating the probability of word sequences.
+We normalize (ie. divide by the sum of) each row to calculate the probability of subsequent letters:
 
-The most direct statistical model records how often pairs of letters occur
+```c++
+Eigen::MatrixXd generate_probability_distributions(const Eigen::MatrixXd& freq_matrix) {
+    Eigen::MatrixXd prob_matrix = freq_matrix; // Copy the matrix; will modify in place
+    Eigen::VectorXd row_sums = freq_matrix.rowwise().sum(); // Sum along each row
 
-We can visualize the bigram tensor
+    // Normalize each row
+    for (int i = 0; i < freq_matrix.rows(); ++i) {
+        if(row_sums(i) > 0) { // Guard against division by zero
+            prob_matrix.row(i) /= row_sums(i);
+        }
+    }
 
-![Frequency plot](examples/bigram.png)
+    return prob_matrix;
+}
+```
+
+![Bigram Probabilities](examples/bigram-probabilities.png)
+
+Using matplotlib-cpp we can generate the above table of probabilities:
+
+
+```c++
+    plt::figure_size(1024, 1024);
+    plt::imshow(bigram_freq, {{"cmap", "Blues"}});
+
+    for (int i=0; i<27; ++i) {
+        for (int j=0; j<27; ++j) {
+            char label[3] = {i_to_c(i), i_to_c(j), '\0'};
+            plt::text(j, i, label, {{"ha", "center"}, {"va", "bottom"}, {"color", "grey"}, {"fontsize", "8"}});
+
+            double v = prob_matrix(i, j);
+            std::string value = static_cast<std::ostringstream&&>(std::ostringstream() << std::fixed << std::setprecision(2) << v).str();
+
+            plt::text(j, i, value, {{"ha", "center"}, {"va", "top"}, {"color", "grey"}, {"fontsize", "8"}});
+        }
+    }
+```
 
 ### Multinomial Sampler
 
-The C++ standard library provides soem basic types for random number generation and using probability distributions.
+Finally we want to generate names. We do this by choosing each letter in turn, with likelihood given by the
+previous letter's row of the probability matrix.
 
-Using the C++ standard library for probability distributions offers reliability, efficiency, and integration
-with the broader C++ ecosystem. It provides optimized routines for generating random numbers and sampling
-from various distributions.
+We interpret the row as a probability distribution and sample from that.
+The C++ standard library provides some basic types for random number generation and using probability
+distributions, in particular we use
+[std::discrete_distribution](https://en.cppreference.com/w/cpp/numeric/random/discrete_distribution).
 
-[std::discrete_distribution](https://en.cppreference.com/w/cpp/numeric/random/discrete_distribution)
 
 ```c++
 class MultinomialSampler {
@@ -156,6 +200,45 @@ public:
 };
 ```
 
+Finally we can use this `MultinomialSampler` to generate names:
+
+```c++
+    auto multinomial = MultinomialSampler(prob_matrix);
+
+    auto generate = [&]() {
+        int ix = 0;
+        do {
+            ix = multinomial(ix);
+            std::cout << i_to_c(ix);
+        } while (ix);
+        std::cout << std::endl;
+    };
+
+    for (int i=0; i<50; ++i) {
+        generate();
+    }
+```
+
+Which generates some new names:
+
+```
+$ examples/bigram ../names.txt
+xsia.
+atin.
+yn.
+cahakan.
+eigoffi.
+la.
+wyn.
+ana.
+k.
+tan.
+...
+```
+
+We'd like to improve on this when we use a more complex model, and in order to do that we need to be able
+to evaluate how good a model is and the contribution of each model parameter.
+
 ### Broadcasting Rules
 
 Broadcasting rules in the context of this project refer to the automatic expansion of matrices or vectors
@@ -166,9 +249,13 @@ networks, where operations often involve matrices and vectors of different shape
 
 ### Loss function
 
-The negative log likelihood is used as a loss function because it quantifies how well the model's predicted probabilities match the actual data, making it highly effective for training probabilistic models like those used in language processing.
+The negative log likelihood is used as a loss function because it quantifies how well the model's predicted
+probabilities match the actual data, making it highly effective for training probabilistic models like those
+used in language processing.
 
-The negative log likelihood is particularly useful because it penalizes incorrect predictions more heavily than other loss functions, leading to a more accurate and robust model, especially in scenarios like language modeling where probability distributions are key.
+The negative log likelihood is particularly useful because it penalizes incorrect predictions more heavily than
+other loss functions, leading to a more accurate and robust model, especially in scenarios like language
+modeling where probability distributions are key.
 
 If the value of the matrix at each (prev, curr) character represents the likelihood that curr follows prev, then
 
