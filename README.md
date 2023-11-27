@@ -53,6 +53,7 @@ makemore "makes more of things like what you give it" -- a toy system for genera
 What it generates is unique names, made from sequences of characters, one letter at a time.
 
 It is trained on a large list of common names, [names.txt](names.txt).
+
 To demonstrate the concept of building a model, training and evaluating it, we first make
 a complete statistical model by counting often each pair of letters occurs.
 
@@ -60,8 +61,12 @@ We then replace the model itself with a neural network, and tweak that.
 
 ## Bigram Language Model
 
-This section implements a Bigram Language Model using `matplotlib-cpp` for visualization.
-It involves calculating bigram frequencies and developing a multinomial sampler.
+A bigram is a pair of "grams", which are grammatical dust, the smallest written things.
+In this toy system we use individual letters, so our bigram model looks at pairs of letters.
+
+The code in [examples/bigram.cpp](examples/bigram.cpp) constructs a Bigram Language Model, renders the table, and generates new names.
+
+We start by counting how often each pair of letters occurs:
 
 ![Bigram Frequencies](examples/bigram.png)
 
@@ -76,10 +81,7 @@ We can think of each row of the matrix as telling us what the likelihood of the 
 tells us the likelihood of the first letter in a name (`a` is more likely than `u`).
 If we chose an `a`, the next letter is very likely to be `n` or `l`, and unlikely to be `q` or `o`.
 
-The rest of this section explains the code in [examples/bigram.cpp](examples/bigram.cpp)
-for calculating these probabilities, rendering the table, and generating new names.
-
-*Skip to [The Neural Network Approach](#the-neural-network-approach).*
+We'll start with some code to put the frequencies of each pair ("bigram") into a matrix, and display that.
 
 ### Eigen
 
@@ -108,8 +110,9 @@ $ sudo apt update
 $ sudo apt install python3 python3-dev python3-matplotlib
 ```
 
-Note that Python will only be used for visualization: the core neural net training and
-sampling is all implemented in C++.
+> [!NOTE]
+> Python will only be used for visualization: the core neural net training and
+> sampling is all implemented in C++.
 
 ### Bigram Frequencies
 
@@ -131,10 +134,7 @@ Eigen::MatrixXd generate_probability_distributions(const Eigen::MatrixXd& freq_m
 }
 ```
 
-![Bigram Probabilities](examples/bigram-probabilities.png)
-
-Using matplotlib-cpp we can generate the above table of probabilities:
-
+and use matplotlib-cpp to generate a table of probabilities:
 
 ```c++
     plt::figure_size(1024, 1024);
@@ -152,6 +152,8 @@ Using matplotlib-cpp we can generate the above table of probabilities:
         }
     }
 ```
+
+![Bigram Probabilities](examples/bigram-probabilities.png)
 
 ### Multinomial Sampler
 
@@ -242,21 +244,21 @@ to evaluate how good a model is and the contribution of each model parameter.
 ### Loss function
 
 We invent a function that returns a number representing how bad the model is.
-This function will use our model parameters as inputs, and if we can tweak our parameters so that this number goes down, then we think we've improved our model.
+If we can tweak our parameters so that this number goes down, then we think we've improved our model.
 This is loss.
-￼
+
 The loss function compares our model output to the expected values:
 here, our model outputs a probability distribution for each subsequent letter,
 and we can compare the actual input data from [names.txt](names.txt) and look up
 the probability that our model would have picked each letter in turn.
 
-For a good model we want all these probabilities to be as high as possible. We could
+For a good model we want the probabilities to be as high as possible. We could
 combine them all by multiplying them together; let's pretend we're doing that but
 first take the log of each value so we can just add the logs (instead of multplying the
 original values) to get a result that improves similarly but is easier to calculate.
 
 Lastly we want to average out this value so it's independent of the number of samples,
-and negate it so that smaller is better.
+and negate it so that smaller is better. We call the result the *negative log-likelihood*.
 
 
 ```cpp
@@ -276,14 +278,13 @@ and negate it so that smaller is better.
     double nll = -log_likelihood / (double)n;
 ```
 
-
-### Broadcasting Rules
-
-Broadcasting rules refer to the automatic expansion of matrices or vectors to compatible sizes during operations.
-Eigen requires you to be explicit about which dimensions you are replicating using `.colwise()` or `.rowwise()`,
-so there is little chance of surprising errors. For details see the Eigen documentation,
-[Reductions, visitors and Broadcasting](https://eigen.tuxfamily.org/dox/group__TutorialReductionsVisitorsBroadcasting.html).
-
+> [!TIP]
+> ### Broadcasting Rules
+>
+> Broadcasting rules refer to the automatic expansion of matrices or vectors to compatible sizes during operations.
+> Eigen requires you to be explicit about which dimensions you are replicating using `.colwise()` or `.rowwise()`,
+> so there is little chance of surprising errors. For details see the Eigen documentation,
+> [Reductions, visitors and Broadcasting](https://eigen.tuxfamily.org/dox/group__TutorialReductionsVisitorsBroadcasting.html).
 
 ## The Neural Network Approach
 
