@@ -239,30 +239,51 @@ tan.
 We'd like to improve on this when we use a more complex model, and in order to do that we need to be able
 to evaluate how good a model is and the contribution of each model parameter.
 
-### Broadcasting Rules
-
-Broadcasting rules in the context of this project refer to the automatic expansion of matrices or vectors
-to compatible sizes during operations. This is crucial in matrix computations, particularly in neural
-networks, where operations often involve matrices and vectors of different shapes.
-
-[Reductions, visitors and Broadcasting](https://eigen.tuxfamily.org/dox/group__TutorialReductionsVisitorsBroadcasting.html)
-
 ### Loss function
 
-The negative log likelihood is used as a loss function because it quantifies how well the model's predicted
-probabilities match the actual data, making it highly effective for training probabilistic models like those
-used in language processing.
+We invent a function that returns a number representing how bad the model is.
+This function will use our model parameters as inputs, and if we can tweak our parameters so that this number goes down, then we think we've improved our model.
+This is loss.
+￼
+The loss function compares our model output to the expected values:
+here, our model outputs a probability distribution for each subsequent letter,
+and we can compare the actual input data from [names.txt](names.txt) and look up
+the probability that our model would have picked each letter in turn.
 
-The negative log likelihood is particularly useful because it penalizes incorrect predictions more heavily than
-other loss functions, leading to a more accurate and robust model, especially in scenarios like language
-modeling where probability distributions are key.
+For a good model we want all these probabilities to be as high as possible. We could
+combine them all by multiplying them together; let's pretend we're doing that but
+first take the log of each value so we can just add the logs (instead of multplying the
+original values) to get a result that improves similarly but is easier to calculate.
 
-If the value of the matrix at each (prev, curr) character represents the likelihood that curr follows prev, then
+Lastly we want to average out this value so it's independent of the number of samples,
+and negate it so that smaller is better.
 
 
 ```cpp
-
+    while (file >> word) {
+        int prev_index = 0;
+        for (char c : word) {
+            c = std::tolower(c);
+            if (c < 'a' || c > 'z') continue;
+            int curr_index = c_to_i(c);
+            log_likelihood += log(prob_matrix(prev_index, curr_index));
+            ++n;
+            prev_index = curr_index;
+        }
+        log_likelihood += log(prob_matrix(prev_index, 0));
+        ++n;
+    }
+    double nll = -log_likelihood / (double)n;
 ```
+
+
+### Broadcasting Rules
+
+Broadcasting rules refer to the automatic expansion of matrices or vectors to compatible sizes during operations.
+Eigen requires you to be explicit about which dimensions you are replicating using `.colwise()` or `.rowwise()`,
+so there is little chance of surprising errors. For details see the Eigen documentation,
+[Reductions, visitors and Broadcasting](https://eigen.tuxfamily.org/dox/group__TutorialReductionsVisitorsBroadcasting.html).
+
 
 ## The Neural Network Approach
 
