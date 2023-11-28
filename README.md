@@ -323,12 +323,9 @@ We will gradually replace the bigram model with a neural net. Step by step:
 
 ### OneHot Encoding
 
-Onehot encoding is used for its simplicity and effectiveness in representing categorical data, like words in language modeling, as binary vectors.
-This format is computationally efficient and simplifies the process of inputting data into neural network models.
+The input to a neural net needs to be a set of numbers. Rather than using some preconceived encoding like ASCII, let's start with the most senseless representation and let the AI make sense of it.
 
-Long vector, zeroes and one one in the location of the value
-
-Operates as a selection vector (why ... move this later)
+To encode a single letter we'll use 27 separate values and set them all to zero except one. This is called onehot encoding.
 
 ```c++
 static inline Eigen::VectorXd encode_onehot(char c) {
@@ -363,7 +360,8 @@ and visualize this to make it a little more clear:
 
 ### LogitLayer
 
-First we want to implement using the Value<T> we developed in micrograd-cpp-2023
+First we implement a simple "neural net" using the `Value<T>` we developed in
+[kfish/micrograd-cpp-2023](kfish/micrograd-cpp-2023):
 
 ```c++
 template <typename T, size_t Nin>
@@ -414,7 +412,8 @@ class LogitLayer {
 ```
 ### LogitNode
 
-Next we develop a Node class using Eigen matrices
+Next we develop a Node class using Eigen matrices. The code for this is in
+[include/node.h](include/node.h).
 
 ```c++
 template <size_t N, size_t M>
@@ -440,7 +439,7 @@ class LogitNode {
 
 ### LogitMLP
 
-Expand LogitNode to include extra weights and biases and tanh
+We expand `LogitNode` to include extra weights and biases and tanh
 
 ```c++
 template <size_t ContextLength, size_t N, size_t E, size_t H, size_t M>
@@ -481,8 +480,7 @@ square and sum all entries: zero loss if W near zero
 
 ### Sampling
 
-General class for sampling from a model
-Usable on any model based on Node
+Eventually we want to be able to sample from this model. We can write a general class for sampling from any model based on Node:
 
 ```c++
 template <typename F>
