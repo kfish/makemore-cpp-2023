@@ -49,6 +49,8 @@ is included.
  * [The Neural Network Approach](#the-neural-network-approach)
    - [OneHot Encoding](#onehot-encoding)
    - [LogitLayer](#logitlayer)
+   - [LogitNode](#logitnode)
+   - [LogitMLP](#logitmlp)
    - [Smoothing](#smoothing)
    - [Sampling](#sampling)
 
