@@ -49,6 +49,8 @@ is included.
  * [The Neural Network Approach](#the-neural-network-approach)
    - [OneHot Encoding](#onehot-encoding)
    - [LogitLayer](#logitlayer)
+   - [LogitNode](#logitnode)
+   - [LogitMLP](#logitmlp)
    - [Smoothing](#smoothing)
    - [Sampling](#sampling)
 
@@ -296,19 +298,36 @@ and negate it so that smaller is better. We call the result the *negative log-li
 
 ## The Neural Network Approach
 
-We will gradually replace the bigram model with a neural net
-longer context
-eventually we want to predict based on long context
+The bigram model is somewhat limited as it only looks at one previous letter at a time. If we increased the context length then the
+number of possibilities would explode. Currently there are 27 possible next letters for each of 27 possible previous letters
+(the 27th letter is the start or end token `.`), producing a 27x27 matrix of `27 * 27 = 729` probabilities.
 
+Each additional letter of context would multiply this by 27:
+
+| Context length |  Possibilities | Size |
+|----------------|----------------|------|
+| 1 | 27 x 27 | 729
+| 2 | 27 x 27 x 27 = 27^3 | 20K
+| 3 | 27 ^ 4 | 531K
+| 4 | 27 ^ 5 | 14M
+| 5 | 27 ^ 6 | 387M
+| 6 | 27 ^ 7 | 10B
+
+Clearly it would be inefficient to simply count all the possibilities: it would take 10B parameters to keep only 6 letters of context.
+We want to build towards much longer context lengths, so we first need to drastically reduce the size of the model.
+
+We will gradually replace the bigram model with a neural net. Step by step:
+
+  * Encode the letters in a way that works with neural nets
+  * Build a simple neural net using `Value<T>` from (kfish/micrograd-cpp-2023)[https://github.com/kfish/micrograd-cpp-2023]
+  * Replace the data representation with `Eigen::MatrixXd`
+  * Explore optimization techniques
 
 ### OneHot Encoding
 
-Onehot encoding is used for its simplicity and effectiveness in representing categorical data, like words in language modeling, as binary vectors.
-This format is computationally efficient and simplifies the process of inputting data into neural network models.
+The input to a neural net needs to be a set of numbers. Rather than using some preconceived encoding like ASCII, let's start with the most senseless representation and let the AI make sense of it.
 
-Long vector, zeroes and one one in the location of the value
-
-Operates as a selection vector (why ... move this later)
+To encode a single letter we'll use 27 separate values and set them all to zero except one. This is called onehot encoding.
 
 ```c++
 static inline Eigen::VectorXd encode_onehot(char c) {
@@ -343,7 +362,8 @@ and visualize this to make it a little more clear:
 
 ### LogitLayer
 
-First we want to implement using the Value<T> we developed in micrograd-cpp-2023
+First we implement a simple "neural net" using the `Value<T>` we developed in
+[kfish/micrograd-cpp-2023](kfish/micrograd-cpp-2023):
 
 ```c++
 template <typename T, size_t Nin>
@@ -394,7 +414,8 @@ class LogitLayer {
 ```
 ### LogitNode
 
-Next we develop a Node class using Eigen matrices
+Next we develop a Node class using Eigen matrices. The code for this is in
+[include/node.h](include/node.h).
 
 ```c++
 template <size_t N, size_t M>
@@ -420,7 +441,7 @@ class LogitNode {
 
 ### LogitMLP
 
-Expand LogitNode to include extra weights and biases and tanh
+We expand `LogitNode` to include extra weights and biases and tanh
 
 ```c++
 template <size_t ContextLength, size_t N, size_t E, size_t H, size_t M>
@@ -461,8 +482,7 @@ square and sum all entries: zero loss if W near zero
 
 ### Sampling
 
-General class for sampling from a model
-Usable on any model based on Node
+Eventually we want to be able to sample from this model. We can write a general class for sampling from any model based on Node:
 
 ```c++
 template <typename F>
