@@ -363,15 +363,21 @@ and visualize this to make it a little more clear:
 ### LogitLayer
 
 First we implement a simple "neural net" using the `Value<T>` we developed in
-[kfish/micrograd-cpp-2023](kfish/micrograd-cpp-2023):
+[kfish/micrograd-cpp-2023](kfish/micrograd-cpp-2023).
+
+Here we model each neuron individually as `LogitNeuron<double, 27>`:
+  * each neuron keeps an array of 27 `weights_`
+  * each neuron gets all 27 input values
+  * inputs are multiplied with their corresponding weights, and these are summed (accumulated)
+  * `mac` is the multiply-accumulate of all weights and inputs
+  * we then take the `exp` of the result to get a positive "logit" count
 
 ```c++
 template <typename T, size_t Nin>
 class LogitNeuron {
     public:
         LogitNeuron()
-            //: weights_(randomArray<T, Nin>())
-            : weights_(zeroArray<T, Nin>())
+            : weights_(randomArray<T, Nin>())
         {}
 
         Value<T> operator()(const std::array<Value<T>, Nin>& x) const {
@@ -389,7 +395,13 @@ class LogitNeuron {
     private:
         std::array<Value<T>, Nin> weights_{};
 };
+```
 
+We then use 27 of these neurons in a `LogitLayer<double, 27, 27>`, which:
+  * sends the same input to all 27 neurons
+  * normalizes the output so the results sum to 1.0, so we can interpret it as a probability distribution
+
+```c++
 template <typename T, size_t Nin, size_t Nout>
 class LogitLayer {
     public:
@@ -410,12 +422,23 @@ class LogitLayer {
     private:
         std::array<LogitNeuron<T, Nin>, Nout> neurons_{};
 };
-
 ```
+
+This all works but it is very inefficient:
+  * each weight is stored as a `Value<double>` object with its own gradient
+  * each of the 27x27 multiplies and additions creates a new `Value<T>` with a backward pass
+  * normalizing the output requires another 27 additions and a division, each being a new `Value<T>` with a backward pass
+
 ### LogitNode
 
 Next we develop a Node class using Eigen matrices. The code for this is in
 [include/node.h](include/node.h).
+
+This allows us to replace the `LogitNeuron` and `LogitLayer` with a single `LogitNode<27, 27>` class:
+  * All weights are stored in a 27x27 matrix, in a `Node` object
+  * Each row of the matrix represents one neuron
+  * The computational graph is much simpler, as there is just one operation to multiply the input vector against the weight vector
+  * The backward pass is a shorter sequence of operations to calculate gradients for matrix multiplication, exponentiation and row normalization
 
 ```c++
 template <size_t N, size_t M>
@@ -441,7 +464,7 @@ class LogitNode {
 
 ### LogitMLP
 
-We expand `LogitNode` to include extra weights and biases and tanh
+Lastly we add a hidden layer, which is just another matrix sandwiched in-between the inputs and outputs, and it has tanh for non-linearity. Oh and first we include an embedding layer. And we add bias to the output.
 
 ```c++
 template <size_t ContextLength, size_t N, size_t E, size_t H, size_t M>
