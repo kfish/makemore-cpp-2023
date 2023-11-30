@@ -506,8 +506,7 @@ class NodeValue {
             return out;
         }
 
-        // TODO: RENAME TO select_col
-        friend ptr column(const ptr& a, int ix) {
+        friend ptr select_column(const ptr& a, int ix) {
             auto out = make_empty(a->rows(), 1);
 
             out->prev_ = {a};
