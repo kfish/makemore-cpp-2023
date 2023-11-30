@@ -363,15 +363,21 @@ and visualize this to make it a little more clear:
 ### LogitLayer
 
 First we implement a simple "neural net" using the `Value<T>` we developed in
-[kfish/micrograd-cpp-2023](kfish/micrograd-cpp-2023):
+[kfish/micrograd-cpp-2023](kfish/micrograd-cpp-2023).
+
+Here we model each neuron individually as `LogitNeuron<double, 27>`:
+  * each neuron keeps an array of 27 `weights_`
+  * each neuron gets all 27 input values
+  * inputs are multiplied with their corresponding weights, and these are summed (accumulated)
+  * `mac` is the multiply-accumulate of all weights and inputs
+  * we then take the `exp` of the result to get a positive "logit" count
 
 ```c++
 template <typename T, size_t Nin>
 class LogitNeuron {
     public:
         LogitNeuron()
-            //: weights_(randomArray<T, Nin>())
-            : weights_(zeroArray<T, Nin>())
+            : weights_(randomArray<T, Nin>())
         {}
 
         Value<T> operator()(const std::array<Value<T>, Nin>& x) const {
@@ -389,7 +395,13 @@ class LogitNeuron {
     private:
         std::array<Value<T>, Nin> weights_{};
 };
+```
 
+We then use 27 of these neurons in a `LogitLayer<double, 27, 27>`, which:
+  * sends the same input to all 27 neurons
+  * normalizes the output so the results sum to 1.0, so we can interpret it as a probability distribution
+
+```c++
 template <typename T, size_t Nin, size_t Nout>
 class LogitLayer {
     public:
@@ -410,12 +422,99 @@ class LogitLayer {
     private:
         std::array<LogitNeuron<T, Nin>, Nout> neurons_{};
 };
-
 ```
+
+This all works but it is very inefficient:
+  * each weight is stored as a `Value<double>` object with its own gradient
+  * each of the 27x27 multiplies and additions creates a new `Value<T>` with a backward pass
+  * normalizing the output requires another 27 additions and a division, each being a new `Value<T>` with a backward pass
+
 ### LogitNode
 
 Next we develop a Node class using Eigen matrices. The code for this is in
 [include/node.h](include/node.h).
+
+For example, matrix multiplication has a backward pass which is analagous to the scalar
+case, where each operand's gradient depends on the other operand:
+
+
+```c++
+        friend ptr operator*(const ptr& a, const ptr& b) {
+            auto out = make_empty(a->rows(), b->cols());
+            out->prev_ = {a, b};
+            out->op_ = "*";
+
+            out->forward_ = [=]() {
+                out->data() = a->data() * b->data();
+            };
+
+            out->backward_ = [=]() {
+                // Gradient with respect to weights is the upstream gradient times the input transposed
+                a->grad() += out->grad() * b->data().transpose();
+
+                // Gradient with respect to input is the transposed weights times the upstream gradient
+                b->grad() += a->data().transpose() * out->grad();
+            };
+
+            out->forward_();
+            return out;
+        }
+```
+
+Operations such as `exp()` and `tanh()` are handled element-wise, and operations like
+`normalize_rows()` are more involved bulk operations.
+
+```c++
+        friend ptr normalize_rows(const ptr& a) {
+            auto out = make_empty_copy(a);
+
+            out->prev_ = {a};
+            out->op_ = "normalize_rows";
+
+            out->forward_ = [=]() {
+                // Calculate the sum of each row
+                Eigen::VectorXd rowSums = a->data().rowwise().sum();
+
+                // Use broadcasting for normalization
+                for (int i = 0; i < a->data().rows(); ++i) {
+                    if (rowSums(i) != 0) { // Avoid division by zero
+                        out->data().row(i) = a->data().row(i).array() / rowSums(i);
+                    }
+                }
+            };
+
+            out->backward_ = [=]() {
+                int rows = a->data().rows();
+                int cols = a->data().cols();
+
+                for (int i = 0; i < rows; ++i) {
+                    double rowSum = a->data().row(i).sum();
+                    double rowSumSquared = rowSum * rowSum;
+
+                    for (int j = 0; j < cols; ++j) {
+                        double grad = 0.0;
+                        for (int k = 0; k < cols; ++k) {
+                            if (j == k) {
+                                grad += out->grad()(i, k) * (1 / rowSum - a->data()(i, j) / rowSumSquared);
+                            } else {
+                                grad -= out->grad()(i, k) * a->data()(i, k) / rowSumSquared;
+                            }
+                        }
+                        a->grad()(i, j) += grad;
+                    }
+                }
+            };
+
+            out->forward_();
+            return out;
+        }
+```
+
+This allows us to replace the `LogitNeuron` and `LogitLayer` with a single `LogitNode<27, 27>` class:
+  * All weights are stored in a 27x27 matrix, in a `Node` object
+  * Each row of the matrix represents one neuron
+  * The computational graph is much simpler, as there is just one operation to multiply the input vector against the weight vector
+  * The backward pass is a shorter sequence of operations to calculate gradients for matrix multiplication, exponentiation and row normalization
 
 ```c++
 template <size_t N, size_t M>
@@ -437,41 +536,6 @@ class LogitNode {
     private:    
         Node weights_;
 };      
-```
-
-### LogitMLP
-
-We expand `LogitNode` to include extra weights and biases and tanh
-
-```c++
-template <size_t ContextLength, size_t N, size_t E, size_t H, size_t M>
-class LogitMLP {
-    public:
-        LogitMLP()
-            : C_(make_node(Eigen::MatrixXd(N, E))), 
-            hidden_(make_node(Eigen::MatrixXd(ContextLength*E, H))),
-            weights_(make_node(Eigen::MatrixXd(H, M))),
-            bias_(make_node(Eigen::RowVectorXd(M)))
-        {}
-        
-        Node operator()(const Node& input) const {
-            return normalize_rows(exp(tanh(row_vectorize(input * C_) * hidden_) * weights_ + bias_));
-        }
-        
-        void adjust(double learning_rate) {
-            C_->adjust(learning_rate);
-            hidden_->adjust(learning_rate);
-            weights_->adjust(learning_rate);
-            bias_->adjust(learning_rate);
-        }
-
-    private:
-        Node C_;
-        Node hidden_;
-        Node weights_;
-        Node bias_;
-};
-
 ```
 
 ### Smoothing

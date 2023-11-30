@@ -349,7 +349,6 @@ class NodeValue {
             };
 
             out->backward_ = [=]() {
-                // Gradient with respect to weights is the upstream gradient times the input transposed
                 a->grad() += out->grad() * m;
             };
 
