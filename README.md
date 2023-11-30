@@ -434,6 +434,82 @@ This all works but it is very inefficient:
 Next we develop a Node class using Eigen matrices. The code for this is in
 [include/node.h](include/node.h).
 
+For example, matrix multiplication has a backward pass which is analagous to the scalar
+case, where each operand's gradient depends on the other operand:
+
+
+```c++
+        friend ptr operator*(const ptr& a, const ptr& b) {
+            auto out = make_empty(a->rows(), b->cols());
+            out->prev_ = {a, b};
+            out->op_ = "*";
+
+            out->forward_ = [=]() {
+                out->data() = a->data() * b->data();
+            };
+
+            out->backward_ = [=]() {
+                // Gradient with respect to weights is the upstream gradient times the input transposed
+                a->grad() += out->grad() * b->data().transpose();
+
+                // Gradient with respect to input is the transposed weights times the upstream gradient
+                b->grad() += a->data().transpose() * out->grad();
+            };
+
+            out->forward_();
+            return out;
+        }
+```
+
+Operations such as `exp()` and `tanh()` are handled element-wise, and operations like
+`normalize_rows()` are more involved bulk operations.
+
+```c++
+        friend ptr normalize_rows(const ptr& a) {
+            auto out = make_empty_copy(a);
+
+            out->prev_ = {a};
+            out->op_ = "normalize_rows";
+
+            out->forward_ = [=]() {
+                // Calculate the sum of each row
+                Eigen::VectorXd rowSums = a->data().rowwise().sum();
+
+                // Use broadcasting for normalization
+                for (int i = 0; i < a->data().rows(); ++i) {
+                    if (rowSums(i) != 0) { // Avoid division by zero
+                        out->data().row(i) = a->data().row(i).array() / rowSums(i);
+                    }
+                }
+            };
+
+            out->backward_ = [=]() {
+                int rows = a->data().rows();
+                int cols = a->data().cols();
+
+                for (int i = 0; i < rows; ++i) {
+                    double rowSum = a->data().row(i).sum();
+                    double rowSumSquared = rowSum * rowSum;
+
+                    for (int j = 0; j < cols; ++j) {
+                        double grad = 0.0;
+                        for (int k = 0; k < cols; ++k) {
+                            if (j == k) {
+                                grad += out->grad()(i, k) * (1 / rowSum - a->data()(i, j) / rowSumSquared);
+                            } else {
+                                grad -= out->grad()(i, k) * a->data()(i, k) / rowSumSquared;
+                            }
+                        }
+                        a->grad()(i, j) += grad;
+                    }
+                }
+            };
+
+            out->forward_();
+            return out;
+        }
+```
+
 This allows us to replace the `LogitNeuron` and `LogitLayer` with a single `LogitNode<27, 27>` class:
   * All weights are stored in a 27x27 matrix, in a `Node` object
   * Each row of the matrix represents one neuron
