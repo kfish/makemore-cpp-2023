@@ -538,43 +538,106 @@ class LogitNode {
 };      
 ```
 
-### Smoothing
-
-Incentivize W to be near zero
-
-square and sum all entries: zero loss if W near zero
-
-### Sampling
-
-Eventually we want to be able to sample from this model. We can write a general class for sampling from any model based on Node:
-
-```c++
-template <typename F>
-class ModelSampler {
-    private:
-        std::mt19937 rng; // Random number generator
-    
-    public:
-        // Constructor that takes a precalculated probability matrix
-        ModelSampler(const F& func)
-            //: rng(std::random_device{}())
-            : rng(static_mt19937()), func_(func)
-        {}  
-        
-        // Operator to sample given input
-        template <typename Input>
-        size_t operator()(const Input& input) {
-            Node input_node = make_node(input);
-            Node output = func_(input_node);
-            Eigen::RowVectorXd row = output->data();
-            std::vector<double> prob_vector(row.data(), row.data() + row.size());
-            std::discrete_distribution<int> dist(prob_vector.begin(), prob_vector.end());
-            return dist(rng);
-        }
-
-    private:
-        const F& func_;
-};      
+```
+build$ examples/logit-node-backprop ../names.txt
+Model: 729 params
+Calculated loss=0x55b6d3a5ea20=&NodeValue(label=, data=-751931.99763405, grad=0.00000000, dim=(1, 1), op=+)
+Read n=228146 bigrams
+nll: 0x55b6d3a5edb0=&NodeValue(label=, data=3.29583687, grad=0.00000000, dim=(1, 1), op=/)
+nll: 31484880 params
+Iter 0: 0x55b6d3a5edb0=&NodeValue(label=, data=3.29583687, grad=1.00000000, dim=(1, 1), op=/)
+Iter 1: 0x55b6d3a5edb0=&NodeValue(label=, data=3.05087721, grad=1.00000000, dim=(1, 1), op=/)
+Iter 2: 0x55b6d3a5edb0=&NodeValue(label=, data=2.90542885, grad=1.00000000, dim=(1, 1), op=/)
+Iter 3: 0x55b6d3a5edb0=&NodeValue(label=, data=2.81752616, grad=1.00000000, dim=(1, 1), op=/)
+Iter 4: 0x55b6d3a5edb0=&NodeValue(label=, data=2.75688583, grad=1.00000000, dim=(1, 1), op=/)
+Iter 5: 0x55b6d3a5edb0=&NodeValue(label=, data=2.71314887, grad=1.00000000, dim=(1, 1), op=/)
+Iter 6: 0x55b6d3a5edb0=&NodeValue(label=, data=2.68049846, grad=1.00000000, dim=(1, 1), op=/)
+Iter 7: 0x55b6d3a5edb0=&NodeValue(label=, data=2.65527269, grad=1.00000000, dim=(1, 1), op=/)
+Iter 8: 0x55b6d3a5edb0=&NodeValue(label=, data=2.63518461, grad=1.00000000, dim=(1, 1), op=/)
+Iter 9: 0x55b6d3a5edb0=&NodeValue(label=, data=2.61878539, grad=1.00000000, dim=(1, 1), op=/)
+Iter 10: 0x55b6d3a5edb0=&NodeValue(label=, data=2.60512778, grad=1.00000000, dim=(1, 1), op=/)
+...
+Iter 290: 0x55b6d3a5edb0=&NodeValue(label=, data=2.45912979, grad=1.00000000, dim=(1, 1), op=/)
+Iter 291: 0x55b6d3a5edb0=&NodeValue(label=, data=2.45911045, grad=1.00000000, dim=(1, 1), op=/)
+Iter 292: 0x55b6d3a5edb0=&NodeValue(label=, data=2.45909124, grad=1.00000000, dim=(1, 1), op=/)
+Iter 293: 0x55b6d3a5edb0=&NodeValue(label=, data=2.45907217, grad=1.00000000, dim=(1, 1), op=/)
+Iter 294: 0x55b6d3a5edb0=&NodeValue(label=, data=2.45905323, grad=1.00000000, dim=(1, 1), op=/)
+Iter 295: 0x55b6d3a5edb0=&NodeValue(label=, data=2.45903443, grad=1.00000000, dim=(1, 1), op=/)
+Iter 296: 0x55b6d3a5edb0=&NodeValue(label=, data=2.45901575, grad=1.00000000, dim=(1, 1), op=/)
+Iter 297: 0x55b6d3a5edb0=&NodeValue(label=, data=2.45899721, grad=1.00000000, dim=(1, 1), op=/)
+Iter 298: 0x55b6d3a5edb0=&NodeValue(label=, data=2.45897879, grad=1.00000000, dim=(1, 1), op=/)
+Iter 299: 0x55b6d3a5edb0=&NodeValue(label=, data=2.45896050, grad=1.00000000, dim=(1, 1), op=/)
 ```
 
 
+### Smoothing
+
+Incentivize W to be near zero: add `(W**2).mean()` ie. square and sum all entries: zero loss if W near zero
+
+```
+loss += 0.01 * (W**2).mean()
+```
+
+### Sampling
+
+We can extract the probability matrix for all possible outputs
+
+
+```c++
+Eigen::MatrixXd extract_probability_matrix(const LogitNode<27, 27>& layer) {
+    Eigen::MatrixXd prob_matrix = Eigen::MatrixXd::Zero(27, 27);
+
+    for (size_t row=0; row < 27; ++row) {
+        Node output = layer(onehots[row]);
+        for (size_t col=0; col < 27; ++col) {
+            prob_matrix(row, col) = output->data()(col);
+        }
+    }
+
+    return prob_matrix;
+}
+```
+
+And sample from it using our `MultinomialSampler`:
+
+```c++
+    auto prob_matrix = extract_probability_matrix(layer);
+    auto multinomial = MultinomialSampler(prob_matrix);
+
+    auto generate = [&]() {
+        int ix = 0;
+        do {
+            ix = multinomial(ix);
+            std::cerr << i_to_c(ix);
+        } while (ix);
+        std::cerr << std::endl;
+    };
+
+    for (int i=0; i<50; ++i) {
+        generate();
+    }
+```
+
+Generating nearly the same names.
+
+
+```
+xph.
+batin.
+yn.
+cahakan.
+eigoffi.
+la.
+wyn.
+ana.
+k.
+tan.
+```
+
+# Conclusion
+
+Introduced a simple bigram model, and how to evaluate it. Then we replaced the exhaustive bigram model with a neural network, and trained it to achieve similar results.
+Also explained some simple smoothing regularization.
+
+Used matplotlib-cpp to visualize the bigram frequencies and the onehot encoding.
+Working towards a hackable framework for developing and exploring machine learning ideas in C++.

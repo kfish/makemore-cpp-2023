@@ -35,3 +35,41 @@ class LogitMLP {
 
 ```
 
+### Sampling
+
+Eventually we want to be able to sample from this model.
+It is no longer feasible to cache the probability distributions for all possible outputs.
+We can write a general class for sampling from any model based on Node.
+It continuously generates the probability distribution for the next output and then samples from that.
+
+[std::discrete_distribution](https://en.cppreference.com/w/cpp/numeric/random/discrete_distribution).
+
+
+```c++
+template <typename F>
+class ModelSampler {
+    private:
+        std::mt19937 rng; // Random number generator
+
+    public:
+        // Constructor that takes a precalculated probability matrix
+        ModelSampler(const F& func)
+            //: rng(std::random_device{}())
+            : rng(static_mt19937()), func_(func)
+        {}
+
+        // Operator to sample given input
+        template <typename Input>
+        size_t operator()(const Input& input) {
+            Node input_node = make_node(input);
+            Node output = func_(input_node);
+            Eigen::RowVectorXd row = output->data();
+            std::vector<double> prob_vector(row.data(), row.data() + row.size());
+            std::discrete_distribution<int> dist(prob_vector.begin(), prob_vector.end());
+            return dist(rng);
+        }
+
+    private:
+        const F& func_;
+};
+```
