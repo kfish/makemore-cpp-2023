@@ -75,7 +75,7 @@ Node make_nll(const F& f, const std::string& filename, int start_word = 0, int m
 
     auto loss_func = [&](const Eigen::VectorXd& context, int curr_index) -> void {
         auto result = f(make_node(context));
-        loss = loss + log(column(result, curr_index));
+        loss = loss + log(select_column(result, curr_index));
     };
 
     int end_word = std::min(static_cast<int>(words.size()), start_word + max_words);
@@ -89,7 +89,7 @@ Node make_nll(const F& f, const std::string& filename, int start_word = 0, int m
     std::cerr << "Calculated loss=" << loss << std::endl;
     std::cerr << "Read n=" << n << " bigrams" << std::endl;
 
-    auto nll = -loss / n;
+    auto nll = -loss / n + 0.01 * mean(pow(f.weights(), 2.0));
 
     std::cerr << "nll: " << nll << std::endl;
 

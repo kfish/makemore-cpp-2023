@@ -506,8 +506,7 @@ class NodeValue {
             return out;
         }
 
-        // TODO: RENAME TO select_col
-        friend ptr column(const ptr& a, int ix) {
+        friend ptr select_column(const ptr& a, int ix) {
             auto out = make_empty(a->rows(), 1);
 
             out->prev_ = {a};
@@ -567,6 +566,27 @@ class NodeValue {
             };
 
             out->forward_();
+            return out;
+        }
+
+        friend ptr mean(const ptr& a) {
+            auto out = make(0.0);
+
+            out->prev_ = {a};
+            out->op_ = "mean";
+
+            out->forward_ = [out, a]() {
+                out->data() = Eigen::MatrixXd::Constant(1, 1, a->data().mean());
+            };
+
+            out->backward_ = [out, a]() {
+                int N = a->size();
+                int G = out->grad()(0, 0);
+                a->grad() += Eigen::MatrixXd::Constant(a->rows(), a->cols(), 1.0 / N) * G;
+            };
+
+            out->forward_();
+
             return out;
         }
 

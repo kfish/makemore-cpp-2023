@@ -107,7 +107,7 @@ Node make_nll(const F& f, const std::string& filename, int max_words = 100)
     auto loss_func = [&](const Eigen::MatrixXd& context, int curr_index) -> void {
         //std::cout << "loss_func: input is " << context.rows() << " x " << context.cols() << std::endl;
         auto result = f(make_node(context));
-        loss = loss + log(column(result, curr_index));
+        loss = loss + log(select_column(result, curr_index));
     };
 
     int end_word = std::min(static_cast<int>(words.size()), max_words);
