@@ -449,10 +449,7 @@ case, where each operand's gradient depends on the other operand:
             };
 
             out->backward_ = [=]() {
-                // Gradient with respect to weights is the upstream gradient times the input transposed
                 a->grad() += out->grad() * b->data().transpose();
-
-                // Gradient with respect to input is the transposed weights times the upstream gradient
                 b->grad() += a->data().transpose() * out->grad();
             };
 
