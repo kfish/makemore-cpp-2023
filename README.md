@@ -572,10 +572,12 @@ Iter 299: 0x55b6d3a5edb0=&NodeValue(label=, data=2.45896050, grad=1.00000000, di
 
 ### Smoothing
 
-Incentivize W to be near zero: add `(W**2).mean()` ie. square and sum all entries: zero loss if W near zero
+Incentivize the weights matrix to be near zero: add the average of the squared weight values to the loss function:
 
-```
-loss += 0.01 * (W**2).mean()
+
+```diff
+-    auto nll = -loss / n;
++    auto nll = -loss / n + 0.01 * mean(pow(f.weights(), 2.0));
 ```
 
 ### Sampling
@@ -636,8 +638,9 @@ tan.
 
 # Conclusion
 
-Introduced a simple bigram model, and how to evaluate it. Then we replaced the exhaustive bigram model with a neural network, and trained it to achieve similar results.
-Also explained some simple smoothing regularization.
+The machine learning lesson here is in Karpathy's video. We used that to motivate the develpment of some C++ code.
 
-Used matplotlib-cpp to visualize the bigram frequencies and the onehot encoding.
-Working towards a hackable framework for developing and exploring machine learning ideas in C++.
+We introduced a simple bigram model, and how to evaluate it. Then we replaced the bigram model with a neural network, and trained it to achieve similar results.
+We also explained some simple smoothing regularization. Along the way we used matplotlib-cpp to visualize the bigram frequencies and the onehot encoding.
+
+It looks like we're working towards a hackable framework for developing and exploring machine learning ideas in C++.
