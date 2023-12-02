@@ -1,5 +1,8 @@
+[⏮ README.md](README.md)
 
 # Episode 3: Building makemore Part 2: MLP
+
+A C++ implementation.
 
 ![](https://i.ytimg.com/vi/TCH_1BHY58I/hqdefault.jpg)
 
@@ -86,6 +89,19 @@ class LogitMLP {
 ```
 
 ## Cross-Entropy
+
+Classification
+
+Backward pass more efficient : can fuse kernels etc
+clustered mathematical expression
+
+numerical stability: constant offset does not change cross-entropy result
+
+optimization: make a new section (in top-level README?) about:
+  * Fused kernels (pytorch)
+  * Eigen expression templates, lazy evaluation
+  * tinygrad approach (minimal ops, target-optimized fusion)
+  * HVM approach (solve in codegen / compiler)
 
 ## Batch training
 
