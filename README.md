@@ -298,28 +298,10 @@ and negate it so that smaller is better. We call the result the *negative log-li
 
 ## The Neural Network Approach
 
-The bigram model is somewhat limited as it only looks at one previous letter at a time. If we increased the context length then the
-number of possibilities would explode. Currently there are 27 possible next letters for each of 27 possible previous letters
-(the 27th letter is the start or end token `.`), producing a 27x27 matrix of `27 * 27 = 729` probabilities.
-
-Each additional letter of context would multiply this by 27:
-
-| Context length |  Possibilities | Size |
-|----------------|----------------|------|
-| 1 | 27 x 27 | 729
-| 2 | 27 x 27 x 27 = 27^3 | 20K
-| 3 | 27 ^ 4 | 531K
-| 4 | 27 ^ 5 | 14M
-| 5 | 27 ^ 6 | 387M
-| 6 | 27 ^ 7 | 10B
-
-Clearly it would be inefficient to simply count all the possibilities: it would take 10B parameters to keep only 6 letters of context.
-We want to build towards much longer context lengths, so we first need to drastically reduce the size of the model.
-
 We will gradually replace the bigram model with a neural net. Step by step:
 
   * Encode the letters in a way that works with neural nets
-  * Build a simple neural net using `Value<T>` from (kfish/micrograd-cpp-2023)[https://github.com/kfish/micrograd-cpp-2023]
+  * Build a simple neural net using `Value<T>` from [kfish/micrograd-cpp-2023](https://github.com/kfish/micrograd-cpp-2023)
   * Replace the data representation with `Eigen::MatrixXd`
   * Explore optimization techniques
 
