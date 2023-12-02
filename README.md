@@ -301,7 +301,7 @@ and negate it so that smaller is better. We call the result the *negative log-li
 We will gradually replace the bigram model with a neural net. Step by step:
 
   * Encode the letters in a way that works with neural nets
-  * Build a simple neural net using `Value<T>` from (kfish/micrograd-cpp-2023)[https://github.com/kfish/micrograd-cpp-2023]
+  * Build a simple neural net using `Value<T>` from [kfish/micrograd-cpp-2023](https://github.com/kfish/micrograd-cpp-2023)
   * Replace the data representation with `Eigen::MatrixXd`
   * Explore optimization techniques
 
