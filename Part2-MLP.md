@@ -9,6 +9,15 @@ is included.
 
  * [Intro](#intro)
  * [LogitMLP](#logitmlp)
+   - [Embedding lookup table](#embedding-lookup-table)
+   - [Hidden layer](#hidden-layer)
+   - [Output layer](#output-layer)
+   - [Re-implementing loss](#re-implementing-loss)
+   - [Summary of the network](#summary-of-the-network)
+ * [Cross-Entropy](#cross-entropy)
+ * [Batch training](#batch-training)
+ * [Visualizing the character embedding](#visualizing-the-character-embedding)
+ * [Sampling](#sampling)
 
 ## Intro
 
@@ -31,7 +40,17 @@ Clearly it would be inefficient to simply count all the possibilities: it would 
 We want to build towards much longer context lengths, so we first need to drastically reduce the size of the model.
 
 
-### LogitMLP
+## LogitMLP
+
+### Embedding lookup table
+
+### Hidden layer
+
+### Output layer
+
+### Re-implementing loss
+
+### Summary of the network
 
 Lastly we add a hidden layer, which is just another matrix sandwiched in-between the inputs and outputs, and it has tanh for non-linearity. Oh and first we include an embedding layer. And we add bias to the output.
 
@@ -66,7 +85,13 @@ class LogitMLP {
 
 ```
 
-### Sampling
+## Cross-Entropy
+
+## Batch training
+
+## Visualizing the character embedding
+
+## Sampling
 
 Eventually we want to be able to sample from this model.
 It is no longer feasible to cache the probability distributions for all possible outputs.
