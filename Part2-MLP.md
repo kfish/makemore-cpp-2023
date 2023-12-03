@@ -97,12 +97,6 @@ clustered mathematical expression
 
 numerical stability: constant offset does not change cross-entropy result
 
-optimization: make a new section (in top-level README?) about:
-  * Fused kernels (pytorch)
-  * Eigen expression templates, lazy evaluation
-  * tinygrad approach (minimal ops, target-optimized fusion)
-  * HVM approach (solve in codegen / compiler)
-
 ## Batch training
 
 ## Visualizing the character embedding
