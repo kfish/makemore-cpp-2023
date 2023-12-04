@@ -225,9 +225,9 @@ class NodeValue {
 
         friend void forward_presorted(const std::vector<NodeValue*>& topo) {
             for (auto it = topo.begin(); it != topo.end(); ++it) {
-                const NodeValue* v = *it;
+                NodeValue* v = *it;
                 auto f = v->forward_;
-                if (f) f();
+                if (f) f(v);
             }
         }
 
@@ -246,9 +246,9 @@ class NodeValue {
             node->initgrad();
 
             for (auto it = topo.rbegin(); it != topo.rend(); ++it) {
-                const NodeValue* v = *it;
+                NodeValue* v = *it;
                 auto f = v->backward_;
-                if (f) f();
+                if (f) f(v);
             }
         }
 
@@ -264,16 +264,21 @@ class NodeValue {
             out->prev_ = {a, b};
             out->op_ = "+";
 
-            out->forward_ = [=]() {
+            out->forward_ = [](NodeValue* out) {
+                const ptr& a = out->prev_[0];
+                const ptr& b = out->prev_[1];
                 out->data() = a->data() + b->data();
             };
 
-            out->backward_ = [=]() {
+            out->backward_ = [](NodeValue* out) {
+                ptr& a = out->prev_[0];
+                ptr& b = out->prev_[1];
+
                 a->grad() += out->grad();
                 b->grad() += out->grad();
             };
 
-            out->forward_();
+            out->forward_(out.get());
             return out;
         }
 
@@ -295,15 +300,17 @@ class NodeValue {
             out->prev_ = {a};
             out->op_ = "neg";
 
-            out->forward_ = [=]() {
+            out->forward_ = [](NodeValue* out) {
+                const ptr& a = out->prev_[0];
                 out->data() = -a->data();
             };
 
-            out->backward_ = [=]() {
+            out->backward_ = [](NodeValue* out) {
+                ptr& a = out->prev_[0];
                 a->grad() -= out->grad();
             };
 
-            out->forward_();
+            out->forward_(out.get());
             return out;
         }
 
@@ -313,16 +320,20 @@ class NodeValue {
             out->prev_ = {a, b};
             out->op_ = "-";
 
-            out->forward_ = [=]() {
+            out->forward_ = [](NodeValue* out) {
+                const ptr& a = out->prev_[0];
+                const ptr& b = out->prev_[1];
                 out->data() = a->data() - b->data();
             };
 
-            out->backward_ = [=]() {
+            out->backward_ = [](NodeValue* out) {
+                ptr& a = out->prev_[0];
+                ptr& b = out->prev_[1];
                 a->grad() += out->grad();
                 b->grad() += -out->grad();
             };
 
-            out->forward_();
+            out->forward_(out.get());
             return out;
         }
 
@@ -344,15 +355,17 @@ class NodeValue {
             out->prev_ = {a};
             out->op_ = "*";
 
-            out->forward_ = [=]() {
+            out->forward_ = [m](NodeValue* out) {
+                const ptr& a = out->prev_[0];
                 out->data() = a->data() * m;
             };
 
-            out->backward_ = [=]() {
+            out->backward_ = [m](NodeValue* out) {
+                ptr& a = out->prev_[0];
                 a->grad() += out->grad() * m;
             };
 
-            out->forward_();
+            out->forward_(out.get());
             return out;
         }
 
@@ -367,11 +380,16 @@ class NodeValue {
             out->prev_ = {a, b};
             out->op_ = "*";
 
-            out->forward_ = [=]() {
+            out->forward_ = [](NodeValue* out) {
+                const ptr& a = out->prev_[0];
+                const ptr& b = out->prev_[1];
                 out->data() = a->data() * b->data();
             };
 
-            out->backward_ = [=]() {
+            out->backward_ = [](NodeValue* out) {
+                ptr& a = out->prev_[0];
+                ptr& b = out->prev_[1];
+
                 // Gradient with respect to weights is the upstream gradient times the input transposed
                 a->grad() += out->grad() * b->data().transpose();
 
@@ -379,7 +397,7 @@ class NodeValue {
                 b->grad() += a->data().transpose() * out->grad();
             };
 
-            out->forward_();
+            out->forward_(out.get());
             return out;
         }
 
@@ -395,15 +413,17 @@ class NodeValue {
             out->prev_ = {a};
             out->op_ = "/";
 
-            out->forward_ = [=]() {
+            out->forward_ = [m](NodeValue* out) {
+                const ptr& a = out->prev_[0];
                 out->data() = a->data() / m;
             };
 
-            out->backward_ = [=]() {
+            out->backward_ = [m](NodeValue* out) {
+                ptr& a = out->prev_[0];
                 a->grad() += out->grad() * (1.0 / m);
             };
 
-            out->forward_();
+            out->forward_(out.get());
             return out;
         }
 
@@ -417,17 +437,21 @@ class NodeValue {
             out->prev_ = {a, b};
             out->op_ = "dot";
 
-            out->forward_ = [=]() {
+            out->forward_ = [](NodeValue* out) {
+                const ptr& a = out->prev_[0];
+                const ptr& b = out->prev_[1];
                 double result = (a->data().array() * b->data().array()).sum();
                 out->data()(0, 0) = result;
             };
 
-            out->backward_ = [=]() {
+            out->backward_ = [](NodeValue* out) {
+                ptr& a = out->prev_[0];
+                ptr& b = out->prev_[1];
                 a->grad() += out->grad()(0, 0) * b->data();
                 b->grad() += out->grad()(0, 0) * a->data();
             };
 
-            out->forward_();
+            out->forward_(out.get());
             return out;
         }
 
@@ -438,15 +462,17 @@ class NodeValue {
             out->prev_ = {a};
             out->op_ = "transpose";
 
-            out->forward_ = [=]() {
+            out->forward_ = [](NodeValue* out) {
+                const ptr& a = out->prev_[0];
                 out->data() = a->data().transpose();
             };
 
-            out->backward_ = [=]() {
+            out->backward_ = [](NodeValue* out) {
+                ptr& a = out->prev_[0];
                a->grad() += out->grad().transpose();
             };
 
-            out->forward_();
+            out->forward_(out.get());
             return out;
         }
 
@@ -457,15 +483,17 @@ class NodeValue {
             out->prev_ = {a};
             out->op_ = "row_vect";
 
-            out->forward_ = [=]() {
+            out->forward_ = [](NodeValue* out) {
+                const ptr& a = out->prev_[0];
                 out->data() = Eigen::Map<Eigen::MatrixXd>(a->data().data(), 1, a->size());
             };
 
-            out->backward_ = [=]() {
+            out->backward_ = [](NodeValue* out) {
+                ptr& a = out->prev_[0];
                 a->grad() = Eigen::Map<Eigen::MatrixXd>(out->grad().data(), a->rows(), a->cols());
             };
 
-            out->forward_();
+            out->forward_(out.get());
             return out;
         }
 
@@ -476,15 +504,17 @@ class NodeValue {
             out->prev_ = {a};
             out->op_ = "col_vect";
 
-            out->forward_ = [=]() {
+            out->forward_ = [](NodeValue* out) {
+                const ptr& a = out->prev_[0];
                 out->data() = Eigen::Map<Eigen::MatrixXd>(a->data().data(), a->size(), 1);
             };
 
-            out->backward_ = [=]() {
+            out->backward_ = [](NodeValue* out) {
+                ptr& a = out->prev_[0];
                 a->grad() = Eigen::Map<Eigen::MatrixXd>(out->grad().data(), a->rows(), a->cols());
             };
 
-            out->forward_();
+            out->forward_(out.get());
             return out;
         }
 
@@ -494,15 +524,17 @@ class NodeValue {
             out->prev_ = {a};
             out->op_ = "row";
 
-            out->forward_ = [=]() {
+            out->forward_ = [ix](NodeValue* out) {
+                const ptr& a = out->prev_[0];
                 out->data() = a->data().row(ix);
             };
 
-            out->backward_ = [=]() {
+            out->backward_ = [ix](NodeValue* out) {
+                ptr& a = out->prev_[0];
                 a->grad().row(ix) += out->grad();
             };
 
-            out->forward_();
+            out->forward_(out.get());
             return out;
         }
 
@@ -512,15 +544,17 @@ class NodeValue {
             out->prev_ = {a};
             out->op_ = "col";
 
-            out->forward_ = [=]() {
+            out->forward_ = [ix](NodeValue* out) {
+                const ptr& a = out->prev_[0];
                 out->data() = a->data().col(ix);
             };
 
-            out->backward_ = [=]() {
+            out->backward_ = [ix](NodeValue* out) {
+                ptr& a = out->prev_[0];
                 a->grad().col(ix) += out->grad();
             };
 
-            out->forward_();
+            out->forward_(out.get());
             return out;
         }
 
@@ -531,7 +565,8 @@ class NodeValue {
             out->prev_ = {a};
             out->op_ = "normalize_rows";
 
-            out->forward_ = [=]() {
+            out->forward_ = [](NodeValue* out) {
+                const ptr& a = out->prev_[0];
                 // Calculate the sum of each row
                 Eigen::VectorXd rowSums = a->data().rowwise().sum();
 
@@ -543,7 +578,8 @@ class NodeValue {
                 }
             };
 
-            out->backward_ = [=]() {
+            out->backward_ = [](NodeValue* out) {
+                ptr& a = out->prev_[0];
                 int rows = a->data().rows();
                 int cols = a->data().cols();
 
@@ -565,7 +601,7 @@ class NodeValue {
                 }
             };
 
-            out->forward_();
+            out->forward_(out.get());
             return out;
         }
 
@@ -575,17 +611,19 @@ class NodeValue {
             out->prev_ = {a};
             out->op_ = "mean";
 
-            out->forward_ = [out, a]() {
+            out->forward_ = [](NodeValue* out) {
+                const ptr& a = out->prev_[0];
                 out->data() = Eigen::MatrixXd::Constant(1, 1, a->data().mean());
             };
 
-            out->backward_ = [out, a]() {
+            out->backward_ = [](NodeValue* out) {
+                ptr& a = out->prev_[0];
                 int N = a->size();
                 int G = out->grad()(0, 0);
                 a->grad() += Eigen::MatrixXd::Constant(a->rows(), a->cols(), 1.0 / N) * G;
             };
 
-            out->forward_();
+            out->forward_(out.get());
 
             return out;
         }
@@ -597,19 +635,20 @@ class NodeValue {
             out->prev_ = {a};
             out->op_ = "log";
 
-            out->forward_ = [=]() {
+            out->forward_ = [](NodeValue* out) {
+                const ptr& a = out->prev_[0];
                 // Ensure the data is positive since log is undefined for non-positive values
                 assert((a->data().array() > 0.0).all() && "Logarithm is undefined for non-positive values.");
 
                 out->data() = a->data().array().log().matrix();
             };
 
-            out->backward_ = [=]() {
-                // Element-wise 
+            out->backward_ = [](NodeValue* out) {
+                ptr& a = out->prev_[0];
                 a->grad() += (out->grad().array() / a->data().array()).matrix();
             };
 
-            out->forward_();
+            out->forward_(out.get());
 
             return out;
         }
@@ -620,17 +659,19 @@ class NodeValue {
             out->prev_ = {a};
             out->op_ = "exp";
 
-            out->forward_ = [=]() {
+            out->forward_ = [](NodeValue* out) {
+                const ptr& a = out->prev_[0];
                 out->data() = a->data().array().exp().matrix();
                 //std::cerr << "exp: out=" << PrettyMatrix(out->data()) << std::endl;
             };
 
-            out->backward_ = [=]() {
+            out->backward_ = [](NodeValue* out) {
+                ptr& a = out->prev_[0];
                 // Element-wise product: out->data .* out->grad
                 a->grad() += out->data().cwiseProduct(out->grad());
             };
 
-            out->forward_();
+            out->forward_(out.get());
             return out;
         }
 
@@ -640,17 +681,19 @@ class NodeValue {
             out->prev_ = {a};
             out->op_ = "tanh";
 
-            out->forward_ = [out, a]() {
+            out->forward_ = [](NodeValue* out) {
+                const ptr& a = out->prev_[0];
                 out->data() = a->data().array().tanh();
             };
 
-            out->backward_ = [out, a]() {
+            out->backward_ = [](NodeValue* out) {
+                ptr& a = out->prev_[0];
                 Eigen::MatrixXd tanhOfA = out->data();
                 Eigen::MatrixXd derivative = 1.0 - tanhOfA.array().square();
                 a->grad() += (derivative.array() * out->grad().array()).matrix();
             };
 
-            out->forward_();
+            out->forward_(out.get());
             return out;
         }
 
@@ -661,16 +704,18 @@ class NodeValue {
             out->prev_ = {a};
             out->op_ = "pow";
 
-            out->forward_ = [=]() {
+            out->forward_ = [exp_value](NodeValue* out) {
+                const ptr& a = out->prev_[0];
                 out->data() = a->data().array().pow(exp_value);
             };
 
-            out->backward_ = [=]() {
+            out->backward_ = [exp_value](NodeValue* out) {
+                ptr& a = out->prev_[0];
                 // Gradient of base when exponent is a scalar
                 a->grad() += (out->grad().array() * exp_value * a->data().array().pow(exp_value - 1)).matrix();
             };
 
-            out->forward_();
+            out->forward_(out.get());
             return out;
         }
 
@@ -683,7 +728,9 @@ class NodeValue {
             out->prev_ = {a, b};
             out->op_ = "pow";
 
-            out->forward_ = [=]() {
+            out->forward_ = [](NodeValue* out) {
+                const ptr& a = out->prev_[0];
+                const ptr& b = out->prev_[1];
                 if (b->data().size() == 1) { // Exponent is a scalar
                     double exp_value = b->data()(0, 0);
                     out->data() = a->data().array().pow(exp_value);
@@ -696,7 +743,9 @@ class NodeValue {
                 }
             };
 
-            out->backward_ = [=]() {
+            out->backward_ = [](NodeValue* out) {
+                ptr& a = out->prev_[0];
+                ptr& b = out->prev_[1];
                 if (b->data().size() == 1) { // Exponent is a scalar
                     double exp_value = b->data()(0, 0);
 
@@ -715,7 +764,7 @@ class NodeValue {
                 }
             };
 
-            out->forward_();
+            out->forward_(out.get());
             return out;
         }
 
@@ -724,8 +773,8 @@ class NodeValue {
         std::vector<ptr> prev_{};
         std::string op_{""};
 
-        std::function<void()> forward_{};
-        std::function<void()> backward_{};
+        std::function<void(NodeValue*)> forward_{};
+        std::function<void(NodeValue*)> backward_{};
 };
 
 using Node = typename NodeValue::ptr;
