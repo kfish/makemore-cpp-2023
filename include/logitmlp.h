@@ -9,40 +9,35 @@ class LogitMLP {
     public:
         LogitMLP()
             : C_(make_node(Eigen::MatrixXd(N, E))),
-            hidden_(make_node(Eigen::MatrixXd(ContextLength*E, H))),
-            weights_(make_node(Eigen::MatrixXd(H, M))),
-            bias_(make_node(Eigen::RowVectorXd(M)))
+            W1_(make_node(Eigen::MatrixXd(ContextLength*E, H))),
+            B1_(make_node(Eigen::RowVectorXd(H))),
+            W2_(make_node(Eigen::MatrixXd(H, M))),
+            B2_(make_node(Eigen::RowVectorXd(M)))
 
         {
         }
 
         size_t model_params() const {
-            return count_params(C_) + count_params(hidden_) + count_params(weights_) + count_params(bias_);
-        }
-
-        const Node& weights() const {
-            return weights_;
+            return count_params(C_) + count_params(W1_) + count_params(W2_) + count_params(B2_);
         }
 
         Node operator()(const Node& input) const {
-            //std::cout << "LogitMLP(): input is " << input->rows() << " x " << input->cols() << std::endl;
-            // input is a ContextLength * N matrix; transpose it to a row vector to select a row of weights_
-            //return normalize_rows(exp(row_vectorize(input * C_) * hidden_ * weights_ + bias_));
-            return normalize_rows(exp(tanh(row_vectorize(input * C_) * hidden_) * weights_ + bias_));
+            return normalize_rows(exp(tanh(row_vectorize(input * C_) * W1_ + B1_) * W2_ + B2_));
         }
 
         void adjust(double learning_rate) {
             C_->adjust(learning_rate);
-            hidden_->adjust(learning_rate);
-            weights_->adjust(learning_rate);
-            bias_->adjust(learning_rate);
+            W1_->adjust(learning_rate);
+            W2_->adjust(learning_rate);
+            B2_->adjust(learning_rate);
         }
 
     private:
         Node C_;
-        Node hidden_;
-        Node weights_;
-        Node bias_;
+        Node W1_;
+        Node B1_;
+        Node W2_;
+        Node B2_;
 };
 
 } // namespace ai
