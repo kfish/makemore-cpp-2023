@@ -426,16 +426,21 @@ case, where each operand's gradient depends on the other operand:
             out->prev_ = {a, b};
             out->op_ = "*";
 
-            out->forward_ = [=]() {
+            out->forward_ = [](NodeValue* out) {
+                const ptr& a = out->prev_[0];
+                const ptr& b = out->prev_[1];
                 out->data() = a->data() * b->data();
             };
 
-            out->backward_ = [=]() {
+            out->backward_ = [](NodeValue* out) {
+                ptr& a = out->prev_[0];
+                ptr& b = out->prev_[1];
+
                 a->grad() += out->grad() * b->data().transpose();
                 b->grad() += a->data().transpose() * out->grad();
             };
 
-            out->forward_();
+            out->forward_(out.get());
             return out;
         }
 ```
@@ -450,7 +455,8 @@ Operations such as `exp()` and `tanh()` are handled element-wise, and operations
             out->prev_ = {a};
             out->op_ = "normalize_rows";
 
-            out->forward_ = [=]() {
+            out->forward_ = [](NodeValue* out) {
+                const ptr& a = out->prev_[0];
                 // Calculate the sum of each row
                 Eigen::VectorXd rowSums = a->data().rowwise().sum();
 
@@ -462,7 +468,8 @@ Operations such as `exp()` and `tanh()` are handled element-wise, and operations
                 }
             };
 
-            out->backward_ = [=]() {
+            out->backward_ = [](NodeValue* out) {
+                ptr& a = out->prev_[0];
                 int rows = a->data().rows();
                 int cols = a->data().cols();
 
@@ -484,7 +491,7 @@ Operations such as `exp()` and `tanh()` are handled element-wise, and operations
                 }
             };
 
-            out->forward_();
+            out->forward_(out.get());
             return out;
         }
 ```
