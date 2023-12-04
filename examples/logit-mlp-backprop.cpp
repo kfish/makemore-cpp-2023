@@ -15,7 +15,9 @@ using namespace ai;
 
 #define CONTEXT_LENGTH 3
 
-using Model = LogitMLP<CONTEXT_LENGTH, 27, 6, 70, 27>;
+#define MINIBATCH
+
+using Model = LogitMLP<CONTEXT_LENGTH, 27, 10, 300, 27>;
 
 int c_to_i(char c) {
     return (c >= 'a' && c <= 'z') ? c - 'a' + 1 : 0;
@@ -35,14 +37,6 @@ std::string string_pair(int row, int col) {
 
 static inline Eigen::VectorXd encode_onehot(size_t i) {
     return OneHot(27, i);
-}
-
-static std::array<Node, 27> onehots{};
-
-static inline void cache_onehots() {
-    for (int row=0; row < 27; ++row) {
-        onehots[row] = make_node(encode_onehot(row));
-    }
 }
 
 int process_word(const std::string& input,
@@ -112,7 +106,6 @@ Node make_nll(const F& f, const std::string& filename, int max_words = 100)
 
     int end_word = std::min(static_cast<int>(words.size()), max_words);
     for (int num_words = 0; num_words < end_word; ++num_words) {
-        //n += process_word_bigram(words[num_words], loss_func);
         n += process_word(words[num_words], loss_func);
     }
 
@@ -140,26 +133,34 @@ int main(int argc, char *argv[]) {
 
     std::cout << "Model: " << layer.model_params() << " params" << std::endl;
 
-    cache_onehots();
-
-    int train_count = 25000;
     int eval_count = 10000;
 
     // TRAIN
     std::cerr << "Start TRAIN..." << std::endl;
+
+#ifdef MINIBATCH
+    int batch_count = 100;
+#else
+    int train_count = 25000;
+
     auto train_nll = make_nll(layer, filename, train_count);
     auto train_topo = topo_sort(train_nll);
 
     std::cerr << "train_nll: " << count_params_presorted(train_topo) << " params" << std::endl;
+#endif
 
-    for (int iter=0; iter<100; ++iter) {
+    for (int iter=0; iter<1000; ++iter) {
+#ifdef MINIBATCH
+        auto train_nll = make_nll(layer, filename, batch_count);
+        auto train_topo = topo_sort(train_nll);
+#endif
+
+        forward_presorted(train_topo);
         backward_presorted(train_nll, train_topo);
 
         std::cerr << "Iter " << iter << ": " << train_nll << std::endl;
 
         layer.adjust(5.0);
-
-        forward_presorted(train_topo);
     }
 
 
