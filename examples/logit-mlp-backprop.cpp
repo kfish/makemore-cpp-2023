@@ -1,6 +1,6 @@
 
 #include <iostream>
-#include <ostream>
+#include <fstream>
 
 #include "batch.h"
 #include "modelsampler.h"
@@ -109,7 +109,6 @@ Node make_nll(const F& f, const std::string& filename, int max_words = 100)
         n += process_word(words[num_words], loss_func);
     }
 
-    std::cerr << "Calculated loss=" << loss << std::endl;
     std::cerr << "Read n=" << n << " bigrams" << std::endl;
 
     auto nll = -loss / n;
@@ -128,6 +127,8 @@ int main(int argc, char *argv[]) {
     }
 
     const std::string filename = argv[1];
+
+    std::ofstream loss_output("loss.tsv");
 
     Model layer;
 
@@ -159,6 +160,8 @@ int main(int argc, char *argv[]) {
         backward_presorted(train_nll, train_topo);
 
         std::cerr << "Iter " << iter << ": " << train_nll << std::endl;
+        double result = train_nll->data()(0, 0);
+        loss_output << iter << '\t' << result << '\n';
 
         layer.adjust(5.0);
     }
