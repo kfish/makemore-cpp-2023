@@ -15,7 +15,7 @@ is included.
    - [Embedding lookup table](#embedding-lookup-table)
    - [Hidden layer](#hidden-layer)
    - [Output layer](#output-layer)
-   - [Re-implementing loss](#re-implementing-loss)
+   - [Plotting loss](#plotting-loss)
    - [Summary of the network](#summary-of-the-network)
  * [Cross-Entropy](#cross-entropy)
  * [Batch training](#batch-training)
@@ -50,7 +50,26 @@ We want to build towards much longer context lengths, so we first need to drasti
 
 ### Output layer
 
-### Re-implementing loss
+### Plotting loss
+
+We can plot the loss values over iterations using [loss_plot.gp](loss_plot.gp):
+
+```gnuplot
+set logscale y
+set xlabel "Iterations"
+set ylabel "Loss"
+set terminal svg
+set output "loss.svg"
+set object 1 rect from screen 0,0 to screen 1,1 behind fillcolor rgb "white" fillstyle solid 1.0
+plot "loss.tsv" using 1:2 with lines title "Loss vs Iteration"
+```
+
+```bash
+$ gnuplot loss_plot.gp
+```
+
+![loss.svg](examples/loss.svg)
+
 
 ### Summary of the network
 
