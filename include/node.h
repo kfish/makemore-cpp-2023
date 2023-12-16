@@ -558,7 +558,7 @@ class NodeValue {
             return out;
         }
 
-        // normalize
+        // normalize_rows
         friend ptr normalize_rows(const ptr& a) {
             auto out = make_empty_copy(a);
 
@@ -580,25 +580,75 @@ class NodeValue {
 
             out->backward_ = [](NodeValue* out) {
                 ptr& a = out->prev_[0];
-                int rows = a->data().rows();
-                int cols = a->data().cols();
+                int rows = a->rows();
+                int cols = a->cols();
+
+                // Compute the sum of each row and its square
+                Eigen::VectorXd row_sums = a->data().rowwise().sum();
 
                 for (int i = 0; i < rows; ++i) {
-                    double rowSum = a->data().row(i).sum();
-                    double rowSumSquared = rowSum * rowSum;
-
                     for (int j = 0; j < cols; ++j) {
-                        double grad = 0.0;
-                        for (int k = 0; k < cols; ++k) {
-                            if (j == k) {
-                                grad += out->grad()(i, k) * (1 / rowSum - a->data()(i, j) / rowSumSquared);
-                            } else {
-                                grad -= out->grad()(i, k) * a->data()(i, k) / rowSumSquared;
-                            }
-                        }
-                        a->grad()(i, j) += grad;
+                        // Compute the gradient for each element
+                        double sum_except_current = row_sums(i) - a->data()(i, j);
+                        a->grad()(i, j) += (out->grad()(i, j) * sum_except_current - a->data()(i, j) * out->grad().row(i).sum()) / (row_sums(i) * row_sums(i));
                     }
                 }
+            };
+
+            out->forward_(out.get());
+            return out;
+        }
+
+        // softmax
+        friend ptr softmax(const ptr& a) {
+            auto out = make_empty_copy(a);
+
+            out->prev_ = {a};
+            out->op_ = "softmax";
+
+            out->forward_ = [](NodeValue* out) {
+                const ptr& a = out->prev_[0];
+
+                if (!(a->data().array() == a->data().array()).all()) {
+                    std::cerr << a->data() << std::endl;
+                }
+
+                Eigen::VectorXd rowSums = a->data().array().exp().rowwise().sum();
+
+                // Use broadcasting for normalization
+                for (int i = 0; i < a->data().rows(); ++i) {
+                    if (rowSums(i) != 0) { // Avoid division by zero
+                        out->data().row(i) = a->data().row(i).array().exp() / rowSums(i);
+                    } else {
+                        out->data().row(i) = a->data().row(i).array().exp();
+                    }
+                }
+
+                if (!(out->data().array() > 0.0).all()) {
+                    std::cerr << out->data() << std::endl;
+                }
+            };
+
+            out->backward_ = [](NodeValue* out) {
+                ptr& a = out->prev_[0];
+                int rows = a->rows();
+                int cols = a->cols();
+
+                Eigen::MatrixXd e = a->data().array().exp();
+                Eigen::MatrixXd e_grad = Eigen::MatrixXd::Zero(rows, cols);
+
+                // Compute the sum of each row and its square
+                Eigen::VectorXd row_sums = e.rowwise().sum();
+
+                for (int i = 0; i < rows; ++i) {
+                    for (int j = 0; j < cols; ++j) {
+                        // Compute the gradient for each element
+                        double sum_except_current = row_sums(i) - e(i, j);
+                        e_grad(i, j) += (out->grad()(i, j) * sum_except_current - e(i, j) * out->grad().row(i).sum()) / (row_sums(i) * row_sums(i));
+                    }
+                }
+
+                a->grad() += e.cwiseProduct(e_grad);
             };
 
             out->forward_(out.get());
